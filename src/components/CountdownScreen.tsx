@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { Event } from '@/types';
 
 interface CountdownScreenProps {
@@ -71,35 +71,31 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete }: Coun
         </div>
 
         {/* Countdown */}
-        <div className="grid grid-cols-4 gap-3 md:gap-4 max-w-lg mx-auto mb-12">
-          <CountdownUnit value={timeLeft.days} label="Days" />
-          <CountdownUnit value={timeLeft.hours} label="Hours" />
-          <CountdownUnit value={timeLeft.minutes} label="Minutes" />
-          <CountdownUnit value={timeLeft.seconds} label="Seconds" />
+        <div className="grid grid-flow-col gap-5 text-center auto-cols-max justify-center mb-12">
+          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
+            <span className="countdown font-mono text-5xl">
+              <span style={{"--value":timeLeft.hours} as React.CSSProperties}></span>
+            </span>
+            hours
+          </div>
+          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
+            <span className="countdown font-mono text-5xl">
+              <span style={{"--value":timeLeft.minutes} as React.CSSProperties}></span>
+            </span>
+            min
+          </div>
+          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
+            <span className="countdown font-mono text-5xl">
+              <span style={{"--value":timeLeft.seconds} as React.CSSProperties}></span>
+            </span>
+            sec
+          </div>
         </div>
 
         {/* Helper text */}
         <p className="text-neutral-500 text-sm">
           This page will automatically refresh when the session starts
         </p>
-      </div>
-    </div>
-  );
-}
-
-interface CountdownUnitProps {
-  value: number;
-  label: string;
-}
-
-function CountdownUnit({ value, label }: CountdownUnitProps) {
-  return (
-    <div className="bg-neutral-800/50 backdrop-blur border border-neutral-700 rounded-xl p-4">
-      <div className="text-3xl md:text-4xl font-bold text-white tabular-nums">
-        {value.toString().padStart(2, '0')}
-      </div>
-      <div className="text-xs md:text-sm text-neutral-500 uppercase tracking-wide mt-1">
-        {label}
       </div>
     </div>
   );
@@ -119,8 +115,8 @@ function calculateTimeLeft(targetTime: number): TimeLeft {
 
   const seconds = Math.floor((total / 1000) % 60);
   const minutes = Math.floor((total / 1000 / 60) % 60);
-  const hours = Math.floor((total / 1000 / 60 / 60) % 24);
-  const days = Math.floor(total / 1000 / 60 / 60 / 24);
+  const hours = Math.floor(total / 1000 / 60 / 60); // Total hours including days
+  const days = 0; // Unused but kept for type signature compatibility if needed, though better to remove from type too.
 
   return { total, days, hours, minutes, seconds };
 }
