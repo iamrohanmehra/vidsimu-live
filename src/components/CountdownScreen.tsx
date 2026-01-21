@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import type { Event } from '@/types';
+import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 
 interface CountdownScreenProps {
   event: Event;
@@ -9,6 +10,33 @@ interface CountdownScreenProps {
 
 export function CountdownScreen({ event, targetTime, onCountdownComplete }: CountdownScreenProps) {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(targetTime));
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
+  // Enable synchronized background music during countdown (only after user interaction)
+  // Music starts 10 minutes before session and syncs across all participants
+  useBackgroundMusic({
+    enabled: timeLeft.total > 0 && audioEnabled,
+    sessionStartTime: targetTime, // Used to calculate which track should play
+    onEnded: () => {
+      // Music stops when countdown completes
+    }
+  });
+
+  // Enable audio on first click anywhere on the screen
+  useEffect(() => {
+    const enableAudio = () => {
+      if (!audioEnabled) {
+        console.log('[Countdown] User clicked - enabling audio');
+        setAudioEnabled(true);
+      }
+    };
+
+    document.addEventListener('click', enableAudio, { once: true });
+    
+    return () => {
+      document.removeEventListener('click', enableAudio);
+    };
+  }, [audioEnabled]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -62,6 +90,16 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete }: Coun
           <p className="text-xl text-neutral-400 mb-8">
             {event.topic}
           </p>
+        )}
+
+        {/* Audio hint - shows until user clicks */}
+        {!audioEnabled && (
+          <div className="mb-6 flex items-center justify-center gap-2 text-violet-300/80 text-sm animate-pulse">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            </svg>
+            <span>Click anywhere to enable audio</span>
+          </div>
         )}
 
         {/* Date and time */}
