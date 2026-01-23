@@ -8,6 +8,9 @@ export interface Event {
   screenUrl: string; // HLS stream URL for screen share
   description?: string;
   duration?: number; // Duration in minutes
+  connectingDelay?: number; // Delay in seconds before stream starts (default 30)
+  instructor?: string; // Instructor name
+  instructorImage?: string; // Instructor avatar URL
 }
 
 // User from Codekaro API
@@ -61,7 +64,7 @@ export interface SessionPointer {
 }
 
 // Stream states
-export type StreamState = 'loading' | 'countdown' | 'live' | 'ended' | 'error';
+export type StreamState = 'loading' | 'countdown' | 'connecting' | 'live' | 'ended' | 'error';
 
 // Stored user in localStorage
 export interface StoredUser {

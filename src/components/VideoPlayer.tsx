@@ -76,13 +76,8 @@ export function VideoPlayer({
     setShowMuteOverlay(false);
   }, [onMuteChange]);
 
-  // Border radius for facecam video
-  const videoClasses = isFaceVideo
-    ? 'rounded-xl overflow-hidden'
-    : '';
-
   return (
-    <div className={`relative w-full h-full bg-black ${videoClasses} ${className}`}>
+    <div className={`relative w-full h-full bg-black ${className}`}>
       {/* Video background for letterbox mode */}
       {resolvedObjectFit === 'contain' && (
         <div className="absolute inset-0 bg-neutral-950 z-0" />

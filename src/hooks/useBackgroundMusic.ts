@@ -6,227 +6,330 @@ interface UseBackgroundMusicOptions {
   onEnded?: () => void;
 }
 
-const TRACK_DURATION_MS = 3 * 60 * 1000; // Assume 3 minutes per track for sync calculation
+interface TrackInfo {
+  id: number;
+  duration: number; // in seconds
+}
+
 const MUSIC_START_OFFSET_MS = 10 * 60 * 1000; // Music starts 10 minutes before session
-const SYNC_INTERVAL_MS = 5000; // Re-sync every 5 seconds to handle drift
-const TRACK_COUNT = 50;
+const FADE_DURATION_MS = 1000; // 1 second fade in/out
 
 /**
  * Generate a deterministic track order based on session date.
- * Same session = same order for all users.
- * Different session (date) = different order.
  */
-function getTrackOrder(sessionStartTime: number): number[] {
-  // Use the session date (YYYYMMDD) as seed for deterministic shuffle
+function getTrackOrder(tracks: TrackInfo[], sessionStartTime: number): TrackInfo[] {
   const date = new Date(sessionStartTime);
   const seed = date.getFullYear() * 10000 + (date.getMonth() + 1) * 100 + date.getDate();
   
-  // Simple seeded random using the date
   const seededRandom = (index: number) => {
     const x = Math.sin(seed + index) * 10000;
     return x - Math.floor(x);
   };
   
-  // Create and shuffle track array using Fisher-Yates with seeded random
-  const tracks = Array.from({ length: TRACK_COUNT }, (_, i) => i + 1);
-  for (let i = tracks.length - 1; i > 0; i--) {
+  // Shuffle using Fisher-Yates with seeded random
+  const shuffled = [...tracks];
+  for (let i = shuffled.length - 1; i > 0; i--) {
     const j = Math.floor(seededRandom(i) * (i + 1));
-    [tracks[i], tracks[j]] = [tracks[j], tracks[i]];
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
   }
   
-  console.log(`[Sync Music] Track order for ${date.toDateString()}:`, tracks);
-  return tracks;
+  console.log(`[Music] Track order for ${date.toDateString()}:`, shuffled.slice(0, 5).map(t => t.id), '...');
+  return shuffled;
 }
 
 /**
  * Calculate which track should be playing and at what position
- * based on the session start time and current time.
  */
-function calculateSyncState(sessionStartTime: number, currentTime: number) {
-  const musicStartTime = sessionStartTime - MUSIC_START_OFFSET_MS;
-  
-  // If current time is before music should start
-  if (currentTime < musicStartTime) {
-    return {
-      shouldPlay: false,
-      trackIndex: -1,
-      trackNumber: 0,
-      seekPosition: 0,
-      timeUntilMusicStart: musicStartTime - currentTime,
-    };
+function calculateSyncState(
+  trackOrder: TrackInfo[],
+  musicStartTime: number,
+  currentTime: number
+) {
+  if (trackOrder.length === 0) {
+    return { trackIndex: 0, seekPosition: 0 };
   }
-  
-  // If current time is at or after session start (countdown complete)
-  if (currentTime >= sessionStartTime) {
-    return {
-      shouldPlay: false,
-      trackIndex: -1,
-      trackNumber: 0,
-      seekPosition: 0,
-      timeUntilMusicStart: 0,
-    };
-  }
-  
-  // Get track order for this session date
-  const trackOrder = getTrackOrder(sessionStartTime);
-  
-  // Calculate elapsed time since music started
+
   const elapsedMs = currentTime - musicStartTime;
-  
-  // Calculate which track should be playing (cycling through trackOrder)
-  const totalTrackIndex = Math.floor(elapsedMs / TRACK_DURATION_MS);
-  const trackIndex = totalTrackIndex % trackOrder.length;
-  const trackNumber = trackOrder[trackIndex];
-  
-  // Calculate position within current track
-  const seekPosition = (elapsedMs % TRACK_DURATION_MS) / 1000; // in seconds
-  
-  return {
-    shouldPlay: true,
-    trackIndex,
-    trackNumber,
-    seekPosition,
-    timeUntilMusicStart: 0,
-  };
+  let remainingMs = elapsedMs;
+  let trackIndex = 0;
+
+  // Find which track we should be on
+  while (trackIndex < trackOrder.length) {
+    const trackDurationMs = trackOrder[trackIndex].duration * 1000;
+    if (remainingMs < trackDurationMs) {
+      break;
+    }
+    remainingMs -= trackDurationMs;
+    trackIndex++;
+    // Loop back to start if we've gone through all tracks
+    if (trackIndex >= trackOrder.length) {
+      trackIndex = 0;
+    }
+  }
+
+  const seekPosition = remainingMs / 1000; // Convert to seconds
+  return { trackIndex: trackIndex % trackOrder.length, seekPosition };
 }
 
 export function useBackgroundMusic({ enabled, sessionStartTime, onEnded }: UseBackgroundMusicOptions) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTrack, setCurrentTrack] = useState<number | null>(null);
-  const lastTrackIndexRef = useRef<number>(-1);
+  const [tracksLoaded, setTracksLoaded] = useState(false);
+  
+  const trackOrderRef = useRef<TrackInfo[]>([]);
+  const currentTrackIndexRef = useRef<number>(0);
+  const fadeIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const startTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const isMountedRef = useRef(true);
+  const musicStartTimeRef = useRef<number>(0);
+  const shouldBePlayingRef = useRef<boolean>(false); // Guard to prevent premature playback
 
   const baseUrl = import.meta.env.VITE_R2_MUSIC_URL || 'https://javascript.design/tracks';
 
-  const playTrack = useCallback((trackNumber: number, seekTo: number = 0) => {
-    if (!audioRef.current) return;
-    
-    const trackUrl = `${baseUrl}/${String(trackNumber).padStart(3, '0')}.mp3`;
-    
-    console.log(`[Sync Music] Loading track ${trackNumber}: ${trackUrl}`);
-    
-    // Prevent overlapping audio
-    audioRef.current.pause();
-    audioRef.current.src = trackUrl;
-    
-    // Set up metadata loaded handler to seek after loading
-    const handleMetadata = () => {
-      if (audioRef.current && seekTo > 0) {
-        const clampedSeek = Math.min(seekTo, audioRef.current.duration || seekTo);
-        console.log(`[Sync Music] Seeking to ${clampedSeek.toFixed(1)}s`);
-        audioRef.current.currentTime = clampedSeek;
+  // Fade volume helper
+  const fadeVolume = useCallback((
+    audio: HTMLAudioElement,
+    targetVolume: number,
+    duration: number,
+    onComplete?: () => void
+  ) => {
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+    }
+
+    const startVolume = audio.volume;
+    const volumeDiff = targetVolume - startVolume;
+    const steps = 20;
+    const stepDuration = duration / steps;
+    let step = 0;
+
+    fadeIntervalRef.current = setInterval(() => {
+      step++;
+      const newVolume = startVolume + (volumeDiff * (step / steps));
+      audio.volume = Math.max(0, Math.min(1, newVolume));
+
+      if (step >= steps) {
+        if (fadeIntervalRef.current) {
+          clearInterval(fadeIntervalRef.current);
+          fadeIntervalRef.current = null;
+        }
+        onComplete?.();
       }
+    }, stepDuration);
+  }, []);
+
+  // Play a specific track at a specific position
+  const playTrackAt = useCallback((trackIndex: number, seekTo: number = 0) => {
+    if (!audioRef.current || !isMountedRef.current || !shouldBePlayingRef.current) return;
+
+    const trackOrder = trackOrderRef.current;
+    if (trackOrder.length === 0) return;
+
+    const track = trackOrder[trackIndex % trackOrder.length];
+    currentTrackIndexRef.current = trackIndex;
+
+    const trackUrl = `${baseUrl}/${String(track.id).padStart(3, '0')}.mp3`;
+    console.log(`[Music] Loading track ${track.id} (${track.duration}s), seek to ${seekTo.toFixed(1)}s`);
+
+    const audio = audioRef.current;
+    audio.src = trackUrl;
+    audio.volume = 0;
+
+    const handleCanPlay = () => {
+      if (!isMountedRef.current || !audioRef.current || !shouldBePlayingRef.current) return;
       
-      audioRef.current?.play()
+      // Seek to position
+      if (seekTo > 0 && seekTo < track.duration - 1) {
+        audio.currentTime = seekTo;
+      }
+
+      audio.play()
         .then(() => {
-          console.log(`[Sync Music] ✅ Playing track ${trackNumber} from ${seekTo.toFixed(1)}s`);
+          if (!isMountedRef.current) return;
+          console.log(`[Music] ✅ Playing track ${track.id} from ${audio.currentTime.toFixed(1)}s`);
           setIsPlaying(true);
-          setCurrentTrack(trackNumber);
+          setCurrentTrack(track.id);
+          fadeVolume(audio, 0.3, FADE_DURATION_MS);
         })
         .catch((error) => {
-          console.error('[Sync Music] ❌ Autoplay failed:', error.message);
-          console.log('[Sync Music] 💡 Click anywhere on the page to enable audio');
+          console.error('[Music] ❌ Autoplay failed:', error.message);
           setIsPlaying(false);
         });
-      
-      audioRef.current?.removeEventListener('loadedmetadata', handleMetadata);
+
+      audio.removeEventListener('canplay', handleCanPlay);
     };
-    
-    audioRef.current.addEventListener('loadedmetadata', handleMetadata);
-    audioRef.current.load();
-  }, [baseUrl]);
+
+    audio.addEventListener('canplay', handleCanPlay);
+    audio.load();
+  }, [baseUrl, fadeVolume]);
+
+  // Handle track end
+  const handleTrackEnd = useCallback(() => {
+    if (!isMountedRef.current || !shouldBePlayingRef.current) return;
+    console.log('[Music] Track ended, playing next...');
+    currentTrackIndexRef.current++;
+    playTrackAt(currentTrackIndexRef.current, 0);
+  }, [playTrackAt]);
+
+  // Start music playback with sync
+  const startMusic = useCallback(() => {
+    if (!isMountedRef.current || !tracksLoaded) return;
+
+    const musicStartTime = musicStartTimeRef.current;
+    const now = Date.now();
+
+    if (now < musicStartTime || now >= sessionStartTime) return;
+
+    // Enable playback
+    shouldBePlayingRef.current = true;
+
+    const { trackIndex, seekPosition } = calculateSyncState(
+      trackOrderRef.current,
+      musicStartTime,
+      now
+    );
+
+    console.log(`[Music] Starting at track index ${trackIndex}, position ${seekPosition.toFixed(1)}s`);
+    playTrackAt(trackIndex, seekPosition);
+  }, [tracksLoaded, sessionStartTime, playTrackAt]);
 
   const stopPlayback = useCallback(() => {
+    shouldBePlayingRef.current = false; // Disable playback
+    if (fadeIntervalRef.current) {
+      clearInterval(fadeIntervalRef.current);
+      fadeIntervalRef.current = null;
+    }
+    if (syncIntervalRef.current) {
+      clearInterval(syncIntervalRef.current);
+      syncIntervalRef.current = null;
+    }
+    if (startTimerRef.current) {
+      clearTimeout(startTimerRef.current);
+      startTimerRef.current = null;
+    }
     if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current.src = '';
+      const audio = audioRef.current;
+      fadeVolume(audio, 0, FADE_DURATION_MS / 2, () => {
+        audio.pause();
+        audio.src = '';
+      });
       setIsPlaying(false);
       setCurrentTrack(null);
     }
-  }, []);
+  }, [fadeVolume]);
 
-  const syncPlayback = useCallback(() => {
-    const now = Date.now();
-    const state = calculateSyncState(sessionStartTime, now);
-    
-    if (!state.shouldPlay) {
-      if (state.timeUntilMusicStart > 0) {
-        console.log(`[Sync Music] Music starts in ${Math.round(state.timeUntilMusicStart / 1000)}s`);
-      }
-      stopPlayback();
-      return;
-    }
-    
-    // Check if we need to switch tracks
-    if (state.trackIndex !== lastTrackIndexRef.current) {
-      console.log(`[Sync Music] Track change: index ${lastTrackIndexRef.current} → ${state.trackIndex}`);
-      lastTrackIndexRef.current = state.trackIndex;
-      playTrack(state.trackNumber, state.seekPosition);
-    } else if (audioRef.current && !audioRef.current.paused) {
-      // Verify sync - correct if drift is more than 2 seconds
-      const currentPos = audioRef.current.currentTime;
-      const expectedPos = state.seekPosition;
-      const drift = Math.abs(currentPos - expectedPos);
-      
-      if (drift > 2) {
-        console.log(`[Sync Music] Correcting drift: ${drift.toFixed(1)}s (${currentPos.toFixed(1)}s → ${expectedPos.toFixed(1)}s)`);
-        audioRef.current.currentTime = expectedPos;
-      }
-    }
-  }, [sessionStartTime, playTrack, stopPlayback]);
-
+  // Fetch track metadata and initialize
   useEffect(() => {
+    isMountedRef.current = true;
+
     if (!enabled || !sessionStartTime) {
-      console.log('[Sync Music] Disabled - stopping playback');
+      console.log('[Music] Disabled');
       stopPlayback();
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-        syncIntervalRef.current = null;
-      }
       return;
     }
 
     const musicStartTime = sessionStartTime - MUSIC_START_OFFSET_MS;
-    console.log(`[Sync Music] Enabled - music starts at ${new Date(musicStartTime).toLocaleTimeString()}`);
-    console.log(`[Sync Music] Session starts at ${new Date(sessionStartTime).toLocaleTimeString()}`);
+    musicStartTimeRef.current = musicStartTime;
+    const now = Date.now();
 
-    // Create audio element
-    if (!audioRef.current) {
-      audioRef.current = new Audio();
-      audioRef.current.volume = 0.3;
-      console.log('[Sync Music] Volume set to 30%');
-      
-      // Handle track end - sync will pick up the next track
-      audioRef.current.addEventListener('ended', () => {
-        console.log('[Sync Music] Track ended naturally, syncing next...');
-        syncPlayback();
-      });
-
-      // Handle errors
-      audioRef.current.addEventListener('error', (e) => {
-        console.error('[Sync Music] Error:', e);
-        setIsPlaying(false);
-      });
+    // If session already started, don't play
+    if (now >= sessionStartTime) {
+      console.log('[Music] Session already started');
+      return;
     }
 
-    // Initial sync
-    syncPlayback();
+    // Fetch tracks.json
+    const fetchTracks = async () => {
+      try {
+        const response = await fetch(`${baseUrl}/tracks.json`);
+        const data = await response.json();
+        const tracks: TrackInfo[] = data.tracks;
+        
+        console.log(`[Music] ✅ Loaded ${tracks.length} tracks from metadata`);
+        trackOrderRef.current = getTrackOrder(tracks, sessionStartTime);
+        setTracksLoaded(true);
+      } catch (error) {
+        console.warn('[Music] ⚠️ Failed to fetch tracks.json (CORS or network issue)');
+        console.log('[Music] Using fallback: assuming 3min per track');
+        
+        // Fallback: create fake track metadata with assumed 180s duration
+        const fallbackTracks: TrackInfo[] = Array.from({ length: 50 }, (_, i) => ({
+          id: i + 1,
+          duration: 180 // 3 minutes
+        }));
+        
+        trackOrderRef.current = getTrackOrder(fallbackTracks, sessionStartTime);
+        setTracksLoaded(true);
+      }
 
-    // Set up periodic sync to handle drift and track changes
-    syncIntervalRef.current = setInterval(syncPlayback, SYNC_INTERVAL_MS);
+      const currentTime = Date.now();
+      
+      if (currentTime >= musicStartTime) {
+        // We're already in the music window - create audio element and start immediately
+        if (!audioRef.current) {
+          audioRef.current = new Audio();
+          audioRef.current.addEventListener('ended', handleTrackEnd);
+          audioRef.current.addEventListener('error', (e) => {
+            console.error('[Music] Error:', e);
+            // Only try next track if we're supposed to be playing
+            if (shouldBePlayingRef.current) {
+              setTimeout(() => {
+                currentTrackIndexRef.current++;
+                playTrackAt(currentTrackIndexRef.current, 0);
+              }, 500);
+            }
+          });
+        }
+        startMusic();
+      } else {
+        // Schedule music start - create audio element just before we need it
+        const delay = musicStartTime - currentTime;
+        console.log(`[Music] Scheduling start in ${Math.round(delay / 1000)}s`);
+        
+        // Create audio element 5 seconds before music starts to avoid initialization errors
+        const audioInitDelay = Math.max(0, delay - 5000);
+        
+        const initTimer = setTimeout(() => {
+          if (!audioRef.current && isMountedRef.current) {
+            console.log('[Music] Initializing audio element');
+            audioRef.current = new Audio();
+            audioRef.current.addEventListener('ended', handleTrackEnd);
+            audioRef.current.addEventListener('error', (e) => {
+              console.error('[Music] Error:', e);
+              // Only try next track if we're supposed to be playing
+              if (shouldBePlayingRef.current) {
+                setTimeout(() => {
+                  currentTrackIndexRef.current++;
+                  playTrackAt(currentTrackIndexRef.current, 0);
+                }, 500);
+              }
+            });
+          }
+        }, audioInitDelay);
+        
+        startTimerRef.current = setTimeout(startMusic, delay);
+        
+        // Store init timer for cleanup
+        return () => {
+          clearTimeout(initTimer);
+        };
+      }
+    };
+
+    fetchTracks();
 
     return () => {
-      console.log('[Sync Music] Cleanup');
+      console.log('[Music] Cleanup');
+      isMountedRef.current = false;
       stopPlayback();
-      if (syncIntervalRef.current) {
-        clearInterval(syncIntervalRef.current);
-        syncIntervalRef.current = null;
+      if (audioRef.current) {
+        audioRef.current.removeEventListener('ended', handleTrackEnd);
+        audioRef.current = null;
       }
-      lastTrackIndexRef.current = -1;
     };
-  }, [enabled, sessionStartTime, syncPlayback, stopPlayback]);
+  }, [enabled, sessionStartTime, baseUrl, handleTrackEnd, playTrackAt, startMusic, stopPlayback]);
 
   // Call onEnded when disabled
   useEffect(() => {

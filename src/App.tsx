@@ -4,6 +4,7 @@ import { StreamPage } from '@/pages/StreamPage';
 import { HelpPage } from '@/pages/HelpPage';
 import { AnalyticsPage } from '@/pages/AnalyticsPage';
 import { AdminLiveSessionPage } from '@/pages/AdminLiveSessionPage';
+import { PreviewPage } from '@/pages/PreviewPage';
 
 function App() {
   return (
@@ -12,6 +13,8 @@ function App() {
         <Route path="/" element={<HomePage />} />
         <Route path="/s/:uuid" element={<StreamPage />} />
         <Route path="/help" element={<HelpPage />} />
+        {/* Preview route for testing */}
+        <Route path="/preview/:sessionId" element={<PreviewPage />} />
         {/* Admin routes */}
         <Route path="/a/:id" element={<AdminLiveSessionPage />} />
         <Route path="/a/:id/analytics" element={<AnalyticsPage />} />

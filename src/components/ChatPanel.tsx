@@ -12,7 +12,7 @@ interface ChatPanelProps {
 
 const MAX_MESSAGE_LENGTH = 500;
 
-export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true, onClose }: ChatPanelProps) {
+export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true }: ChatPanelProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,23 +40,6 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true, o
 
   return (
     <div className="flex flex-col h-full bg-neutral-900/50 backdrop-blur-sm">
-      {/* Header */}
-      <div className="flex items-center justify-between p-3 border-b border-neutral-800">
-        <h3 className="font-semibold text-white flex items-center gap-2">
-          <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          Chat
-        </h3>
-        {onClose && (
-          <button onClick={onClose} className="text-neutral-400 hover:text-white p-1">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        )}
-      </div>
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-3 space-y-3">
         {messages.length === 0 ? (
@@ -97,7 +80,7 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true, o
 
       {/* Input */}
       <form onSubmit={handleSubmit} className="p-3 border-t border-neutral-800">
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <input
             ref={inputRef}
             type="text"
@@ -105,21 +88,21 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true, o
             onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
             placeholder="Type a message..."
             disabled={isSending}
-            className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50"
+            className="flex-1 bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-1.5 text-white text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent disabled:opacity-50"
           />
           <Button
             type="submit"
             disabled={!input.trim() || isSending}
-            size="sm"
-            className="bg-violet-600 hover:bg-violet-500 text-white px-4"
+            size="icon"
+            className="bg-violet-600 hover:bg-violet-500 text-white h-9 w-9 shrink-0"
           >
             {isSending ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
+              <svg className="w-5 h-5 animate-spin" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
               </svg>
             )}

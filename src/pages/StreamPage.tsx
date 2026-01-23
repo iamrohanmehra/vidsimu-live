@@ -10,6 +10,7 @@ import { EmailVerificationModal } from '@/components/EmailVerificationModal';
 import { JoinSessionModal } from '@/components/JoinSessionModal';
 import { StreamContainer } from '@/components/StreamContainer';
 import { CountdownScreen } from '@/components/CountdownScreen';
+import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { SessionEndedScreen } from '@/components/SessionEndedScreen';
 import { SessionLimitScreen } from '@/components/SessionLimitScreen';
 import type { Event, User, StreamState } from '@/types';
@@ -35,6 +36,12 @@ export function StreamPage() {
     if (!event?.time) return 0;
     return new Date(event.time).getTime();
   }, [event?.time]);
+
+  // Calculate effective stream start (after connecting delay)
+  const connectingDelay = event?.connectingDelay ?? 30; // Default 30 seconds
+  const effectiveStreamStart = useMemo(() => {
+    return streamStartTime + (connectingDelay * 1000);
+  }, [streamStartTime, connectingDelay]);
 
   // Hooks - only enable when user has joined
   const { clientId, viewerCount } = usePresence({
@@ -98,9 +105,13 @@ export function StreamPage() {
         // Determine initial stream state based on time
         const now = Date.now();
         const startTime = new Date(eventData.time).getTime();
+        const delay = eventData.connectingDelay ?? 30;
+        const effectiveStart = startTime + (delay * 1000);
 
         if (now < startTime) {
           setStreamState('countdown');
+        } else if (now < effectiveStart) {
+          setStreamState('connecting');
         } else {
           setStreamState('live');
         }
@@ -137,8 +148,13 @@ export function StreamPage() {
     setHasJoined(true);
   }, []);
 
-  // Handle countdown complete
+  // Handle countdown complete -> transition to connecting
   const handleCountdownComplete = useCallback(() => {
+    setStreamState('connecting');
+  }, []);
+
+  // Handle connecting complete -> transition to live
+  const handleConnectingComplete = useCallback(() => {
     setStreamState('live');
   }, []);
 
@@ -222,6 +238,17 @@ export function StreamPage() {
     return <SessionEndedScreen event={event} />;
   }
 
+  // Connecting state
+  if (streamState === 'connecting') {
+    return (
+      <ConnectingScreen
+        event={event}
+        effectiveStreamStart={effectiveStreamStart}
+        onConnectingComplete={handleConnectingComplete}
+      />
+    );
+  }
+
   // Live state
   return (
     <>
@@ -235,7 +262,7 @@ export function StreamPage() {
         onSendMessage={sendMessage}
         isSending={isSending}
         viewerCount={hasJoined ? viewerCount : displayViewerCount}
-        streamStartTime={streamStartTime}
+        streamStartTime={effectiveStreamStart} // Use effective start (includes connecting delay)
         isChatOpen={isChatOpen}
         onToggleChat={handleToggleChat}
         onStreamEnd={handleStreamEnd}

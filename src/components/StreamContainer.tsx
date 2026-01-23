@@ -46,24 +46,22 @@ export function StreamContainer({
   }, [muted, onMuteChange]);
 
   return (
-    <div className="flex flex-col h-screen bg-black">
-      {/* Header with mute toggle */}
-      <StreamHeader
-        title={event.title}
-        viewerCount={viewerCount}
-        streamStartTime={streamStartTime}
-        muted={muted}
-        onMuteToggle={handleMuteToggle}
-        onToggleChat={onToggleChat}
-        isChatOpen={isChatOpen}
-      />
+    <div className="flex h-screen bg-black overflow-hidden">
+      {/* Left Column: Header + Main Video */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Header moved inside left column */}
+        <StreamHeader
+          title={event.title}
+          viewerCount={viewerCount}
+          streamStartTime={streamStartTime}
+          muted={muted}
+          onMuteToggle={handleMuteToggle}
+          onToggleChat={onToggleChat}
+          isChatOpen={isChatOpen}
+        />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-        {/* Main video (screen share) - 2/3 width on desktop */}
-        {/* Uses letterbox (object-contain) to preserve aspect ratio */}
-        {/* Screen share has NO audio - audio comes from facecam */}
-        <div className="flex-1 md:w-2/3 relative bg-neutral-950">
+        {/* Main video area */}
+        <div className="flex-1 relative bg-neutral-950 p-2 min-h-0">
           <VideoPlayer
             url={screenUrl}
             muted={true} // Screen share is ALWAYS muted - audio comes from facecam
@@ -73,53 +71,45 @@ export function StreamContainer({
             objectFit="contain" // Letterbox mode - preserves aspect ratio
             streamStartTime={streamStartTime}
             isPrimarySync={false} // Not the sync source
-            className="w-full h-full"
+            className="w-full h-full rounded-xl overflow-hidden"
           />
         </div>
+      </div>
 
-        {/* Side panel (face cam + chat) - 1/3 width on desktop */}
-        <div className={`
-          md:w-1/3 md:max-w-md flex flex-col border-l border-neutral-800
-          ${isChatOpen ? 'h-1/2 md:h-full' : 'h-auto'}
-          absolute md:relative inset-x-0 bottom-0 md:inset-auto
-          bg-neutral-900 md:bg-transparent
-          transition-transform duration-300
-          ${isChatOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-0'}
-        `}>
-          {/* Face cam - Contains audio, syncs playback */}
-          <div className="h-48 md:h-64 shrink-0 p-2">
-            <div className="h-full rounded-xl overflow-hidden bg-neutral-950">
-              <VideoPlayer
-                url={faceUrl}
-                muted={muted} // Facecam has audio - controlled by mute state
-                onMuteChange={onMuteChange}
-                isFaceVideo={true}
-                objectFit="cover" // Cover mode - fills container
-                streamStartTime={streamStartTime}
-                isPrimarySync={true} // Facecam controls session end
-                onStreamEnd={onStreamEnd}
-                className="w-full h-full"
-              />
-            </div>
-          </div>
-
-          {/* Poll Card (when active) */}
-          {visitorId && (
-            <div className="px-2 pb-2">
-              <PollVoteCard streamId={event.id} visitorId={visitorId} />
-            </div>
-          )}
-
-          {/* Chat */}
-          <div className="flex-1 overflow-hidden">
-            <ChatPanel
-              messages={messages}
-              onSendMessage={onSendMessage}
-              isSending={isSending}
-              isOpen={isChatOpen}
-              onClose={onToggleChat}
+      {/* Right Column: Sidebar (Fixed width, Full Height) */}
+      <div className="w-full md:w-1/4 md:max-w-sm flex flex-col border-l border-neutral-800 h-full bg-neutral-900 shrink-0">
+        {/* Face cam - Contains audio, syncs playback */}
+        <div className="h-48 md:h-64 shrink-0">
+          <div className="h-full bg-neutral-950">
+            <VideoPlayer
+              url={faceUrl}
+              muted={muted} // Facecam has audio - controlled by mute state
+              onMuteChange={onMuteChange}
+              isFaceVideo={true}
+              objectFit="cover" // Cover mode - fills container
+              streamStartTime={streamStartTime}
+              isPrimarySync={true} // Facecam controls session end
+              onStreamEnd={onStreamEnd}
+              className="w-full h-full"
             />
           </div>
+        </div>
+
+        {/* Poll Card (when active) */}
+        {visitorId && (
+          <div className="px-2 pb-2">
+            <PollVoteCard streamId={event.id} visitorId={visitorId} />
+          </div>
+        )}
+
+        {/* Chat */}
+        <div className="flex-1 overflow-hidden">
+          <ChatPanel
+            messages={messages}
+            onSendMessage={onSendMessage}
+            isSending={isSending}
+            isOpen={isChatOpen}
+          />
         </div>
       </div>
     </div>
