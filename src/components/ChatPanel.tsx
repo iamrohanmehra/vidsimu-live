@@ -56,7 +56,7 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true }:
               <img
                 src={msg.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(msg.name)}&background=8b5cf6&color=fff`}
                 alt={msg.name}
-                className="w-8 h-8 rounded-full flex-shrink-0"
+                className="w-8 h-8 rounded-full shrink-0"
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-baseline gap-2">
@@ -66,11 +66,11 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true }:
                       <span className="ml-1 text-xs bg-violet-500/30 px-1.5 py-0.5 rounded text-violet-300">Admin</span>
                     )}
                   </span>
-                  <span className="text-xs text-neutral-500 flex-shrink-0">
+                  <span className="text-xs text-neutral-500 shrink-0">
                     {formatTime(msg.timestamp)}
                   </span>
                 </div>
-                <p className="text-neutral-300 text-sm break-words">{msg.message}</p>
+                <p className="text-neutral-300 text-sm wrap-break-word">{msg.message}</p>
               </div>
             </div>
           ))

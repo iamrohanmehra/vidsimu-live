@@ -6,6 +6,7 @@ import { usePresence } from '@/hooks/usePresence';
 import { useSessionGating } from '@/hooks/useSessionGating';
 import { useChat } from '@/hooks/useChat';
 import { useCurrentViewers } from '@/hooks/useCurrentViewers';
+import { useOptimisticVideoSync } from '@/hooks/useOptimisticVideoSync';
 import { EmailVerificationModal } from '@/components/EmailVerificationModal';
 import { JoinSessionModal } from '@/components/JoinSessionModal';
 import { StreamContainer } from '@/components/StreamContainer';
@@ -30,6 +31,7 @@ export function StreamPage() {
   const [muted, setMuted] = useState(true);
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [hasJoined, setHasJoined] = useState(false);
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
 
   // Calculate stream start time
   const streamStartTime = useMemo(() => {
@@ -75,6 +77,13 @@ export function StreamPage() {
     return combined.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [userMessages, privateMessages]);
 
+  // Use optimistic video sync when transitioning to live (for late joiners)
+  const syncState = useOptimisticVideoSync({
+    streamStartTime: effectiveStreamStart,
+    videoUrl: event?.url, // Use facecam URL for duration check
+    enabled: streamState === 'live' && showSyncOverlay,
+  });
+
   // Load event data
   useEffect(() => {
     if (!uuid) {
@@ -113,7 +122,9 @@ export function StreamPage() {
         } else if (now < effectiveStart) {
           setStreamState('connecting');
         } else {
+          // Late joiner - show sync overlay during live state
           setStreamState('live');
+          setShowSyncOverlay(true);
         }
 
         // Check for stored user
@@ -156,6 +167,12 @@ export function StreamPage() {
   // Handle connecting complete -> transition to live
   const handleConnectingComplete = useCallback(() => {
     setStreamState('live');
+    setShowSyncOverlay(true); // Show sync overlay while videos load
+  }, []);
+
+  // Handle sync overlay complete -> hide overlay
+  const handleSyncComplete = useCallback(() => {
+    setShowSyncOverlay(false);
   }, []);
 
   // Handle stream end (called by facecam when video finishes)
@@ -266,7 +283,19 @@ export function StreamPage() {
         isChatOpen={isChatOpen}
         onToggleChat={handleToggleChat}
         onStreamEnd={handleStreamEnd}
+        initialSeekTime={syncState.estimatedTime} // Pass optimistic position for immediate seeking
       />
+
+      {/* Sync overlay - shown while videos are loading and syncing */}
+      {showSyncOverlay && (
+        <ConnectingScreen
+          event={event}
+          effectiveStreamStart={effectiveStreamStart}
+          syncConfidence={syncState.syncConfidence}
+          onConnectingComplete={handleSyncComplete}
+          isOverlay={true}
+        />
+      )}
 
       <EmailVerificationModal
         isOpen={showEmailModal}

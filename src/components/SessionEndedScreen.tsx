@@ -7,7 +7,7 @@ interface SessionEndedScreenProps {
 
 export function SessionEndedScreen({ event }: SessionEndedScreenProps) {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950 flex items-center justify-center p-4">
       <div className="text-center max-w-lg mx-auto">
         {/* Icon */}
         <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-neutral-800 flex items-center justify-center">

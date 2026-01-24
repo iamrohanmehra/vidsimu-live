@@ -40,11 +40,11 @@ export function HomePage() {
   }, [classId, navigate]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-violet-950/20 to-neutral-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-neutral-950 via-violet-950/20 to-neutral-950 flex items-center justify-center p-4">
       <div className="w-full max-w-md">
         {/* Logo/Brand */}
         <div className="text-center mb-10">
-          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
+          <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-violet-500/25">
             <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z" />
             </svg>
@@ -75,7 +75,7 @@ export function HomePage() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold py-6 text-lg"
+            className="w-full bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-semibold py-6 text-lg"
           >
             {isLoading ? (
               <span className="flex items-center gap-2">

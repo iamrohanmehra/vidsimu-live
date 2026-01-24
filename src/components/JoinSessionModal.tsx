@@ -18,7 +18,7 @@ export function JoinSessionModal({ isOpen, event, onJoin }: JoinSessionModalProp
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-b from-neutral-900 to-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl text-center">
+      <div className="bg-linear-to-b from-neutral-900 to-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl text-center">
         {/* Live indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="relative flex h-3 w-3">
@@ -44,7 +44,7 @@ export function JoinSessionModal({ isOpen, event, onJoin }: JoinSessionModalProp
         <Button
           onClick={handleJoin}
           size="lg"
-          className="w-full bg-gradient-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-lg py-6 rounded-xl shadow-lg shadow-violet-500/25 transition-all hover:shadow-violet-500/40 hover:scale-[1.02]"
+          className="w-full bg-linear-to-r from-violet-600 to-fuchsia-600 hover:from-violet-500 hover:to-fuchsia-500 text-white font-bold text-lg py-6 rounded-xl shadow-lg shadow-violet-500/25 transition-all hover:shadow-violet-500/40 hover:scale-[1.02]"
         >
           <svg className="w-6 h-6 mr-2" fill="currentColor" viewBox="0 0 24 24">
             <path d="M8 5v14l11-7z" />

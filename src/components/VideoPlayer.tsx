@@ -13,6 +13,7 @@ interface VideoPlayerProps {
   streamStartTime?: number;
   isPrimarySync?: boolean; // Whether this video controls the session end
   onStreamEnd?: () => void;
+  initialSeekTime?: number; // Optimistic initial position for late joiners
   className?: string;
 }
 
@@ -26,6 +27,7 @@ export function VideoPlayer({
   streamStartTime = 0,
   isPrimarySync = false,
   onStreamEnd,
+  initialSeekTime,
   className = '',
 }: VideoPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
@@ -46,6 +48,7 @@ export function VideoPlayer({
     enabled: streamStartTime > 0 && !isLoading,
     onStreamEnd: isPrimarySync ? onStreamEnd : undefined,
     isPrimary: isPrimarySync,
+    initialTime: initialSeekTime,
   });
 
   // Keep videoRef in sync with player's internal ref

@@ -72,7 +72,7 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete }: Coun
   }, [targetTime]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-neutral-950 via-neutral-900 to-violet-950 flex items-center justify-center p-4">
+    <div className="min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-violet-950 flex items-center justify-center p-4">
       <div className="text-center max-w-2xl mx-auto">
         {/* Upcoming badge */}
         <div className="inline-flex items-center gap-2 bg-violet-500/20 border border-violet-500/30 rounded-full px-4 py-1.5 mb-8">

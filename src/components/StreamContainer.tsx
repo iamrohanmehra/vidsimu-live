@@ -22,6 +22,7 @@ interface StreamContainerProps {
   onStreamEnd?: () => void;
   visitorId?: string;
   children?: ReactNode;
+  initialSeekTime?: number; // Optimistic seek position for late joiners
 }
 
 export function StreamContainer({
@@ -39,6 +40,7 @@ export function StreamContainer({
   onToggleChat,
   onStreamEnd,
   visitorId,
+  initialSeekTime,
 }: StreamContainerProps) {
   // Toggle mute state
   const handleMuteToggle = useCallback(() => {
@@ -71,6 +73,7 @@ export function StreamContainer({
             objectFit="contain" // Letterbox mode - preserves aspect ratio
             streamStartTime={streamStartTime}
             isPrimarySync={false} // Not the sync source
+            initialSeekTime={initialSeekTime}
             className="w-full h-full rounded-xl overflow-hidden"
           />
         </div>
@@ -90,6 +93,7 @@ export function StreamContainer({
               streamStartTime={streamStartTime}
               isPrimarySync={true} // Facecam controls session end
               onStreamEnd={onStreamEnd}
+              initialSeekTime={initialSeekTime}
               className="w-full h-full"
             />
           </div>

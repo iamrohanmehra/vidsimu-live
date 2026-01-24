@@ -1,0 +1,6 @@
+# Cloudflare Pages SPA Routing Configuration
+# This file ensures client-side routing works correctly
+
+# Redirect all requests to index.html for SPA routing
+# except for files that actually exist (assets, etc.)
+/*    /index.html   200

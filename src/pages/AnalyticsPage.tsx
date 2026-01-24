@@ -145,7 +145,7 @@ export function AnalyticsPage() {
                               {msg.timestamp && new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </span>
                           </div>
-                          <p className="text-sm text-neutral-300 break-words">
+                          <p className="text-sm text-neutral-300 wrap-break-word">
                             {msg.message}
                           </p>
                         </div>

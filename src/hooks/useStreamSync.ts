@@ -6,6 +6,7 @@ interface UseStreamSyncOptions {
   enabled?: boolean;
   onStreamEnd?: () => void;
   isPrimary?: boolean; // Whether this is the primary sync source
+  initialTime?: number; // Optimistic initial position (from useOptimisticVideoSync)
 }
 
 interface UseStreamSyncReturn {
@@ -26,6 +27,7 @@ export function useStreamSync({
   enabled = true,
   onStreamEnd,
   isPrimary = true,
+  initialTime,
 }: UseStreamSyncOptions): UseStreamSyncReturn {
   const lastSyncTimeRef = useRef<number>(0);
   const syncIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -74,7 +76,14 @@ export function useStreamSync({
     if (video.paused && !force) return;
 
     const currentTime = video.currentTime;
-    const drift = currentTime - expectedTime;
+    
+    // Use initialTime for the very first seek (optimistic positioning)
+    // After that, use regular sync logic
+    const targetTime = (initialTime !== undefined && currentTime === 0 && syncAttemptRef.current === 0)
+      ? initialTime
+      : expectedTime;
+    
+    const drift = currentTime - targetTime;
     currentDriftRef.current = drift;
 
     // Only sync if drift exceeds threshold
@@ -84,16 +93,16 @@ export function useStreamSync({
       // Avoid micro-adjustments for small drifts
       if (absDrift > SEEK_THRESHOLD) {
         // Clamp target time to valid range (0 to video duration)
-        const targetTime = Math.max(0, Math.min(expectedTime, video.duration));
+        const clampedTarget = Math.max(0, Math.min(targetTime, video.duration));
         
         // Only seek if target is valid and different enough
-        if (isFinite(targetTime) && targetTime >= 0) {
+        if (isFinite(clampedTarget) && clampedTarget >= 0) {
           // Check if we can seek to this position (might be unbuffered)
           const buffered = video.buffered;
           let canSeek = false;
           
           for (let i = 0; i < buffered.length; i++) {
-            if (targetTime >= buffered.start(i) && targetTime <= buffered.end(i)) {
+            if (clampedTarget >= buffered.start(i) && clampedTarget <= buffered.end(i)) {
               canSeek = true;
               break;
             }
@@ -103,26 +112,27 @@ export function useStreamSync({
           if (!canSeek && buffered.length > 0) {
             // Try to seek to the end of the last buffered range
             const lastBufferedEnd = buffered.end(buffered.length - 1);
-            if (targetTime > lastBufferedEnd) {
+            if (clampedTarget > lastBufferedEnd) {
               // Seek to near the end of buffered content, video will continue from there
               video.currentTime = Math.max(0, lastBufferedEnd - 0.5);
               setIsReady(true);
               syncAttemptRef.current++;
               
               if (import.meta.env.DEV && syncAttemptRef.current <= 3) {
-                console.log(`[StreamSync] Target ${targetTime.toFixed(1)}s not buffered yet, seeking to ${lastBufferedEnd.toFixed(1)}s`);
+                console.log(`[StreamSync] Target ${clampedTarget.toFixed(1)}s not buffered yet, seeking to ${lastBufferedEnd.toFixed(1)}s`);
               }
               return;
             }
           }
           
           // Seek to target
-          video.currentTime = targetTime;
+          video.currentTime = clampedTarget;
           lastSyncTimeRef.current = Date.now();
           setIsReady(true);
           
           if (import.meta.env.DEV) {
-            console.log(`[StreamSync] Corrected drift of ${drift.toFixed(2)}s → seeking to ${targetTime.toFixed(2)}s`);
+            const source = initialTime !== undefined && syncAttemptRef.current === 0 ? 'optimistic' : 'calculated';
+            console.log(`[StreamSync] Corrected drift of ${drift.toFixed(2)}s → seeking to ${clampedTarget.toFixed(2)}s (${source})`);
           }
         }
       } else {
@@ -133,7 +143,7 @@ export function useStreamSync({
       // Within threshold, considered synced
       setIsReady(true);
     }
-  }, [videoRef, streamStartTime, getExpectedTime, onStreamEnd, isPrimary]);
+  }, [videoRef, streamStartTime, getExpectedTime, onStreamEnd, isPrimary, initialTime]);
 
   // Manual sync function exposed to components
   const syncNow = useCallback(() => {

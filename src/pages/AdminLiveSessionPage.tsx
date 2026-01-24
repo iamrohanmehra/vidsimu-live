@@ -244,7 +244,7 @@ export function AdminLiveSessionPage() {
         {/* Dashboard Panels */}
         <div className="flex-1 flex gap-6 overflow-hidden">
           {/* Main Chat Console (65%) */}
-          <div className="flex-[2] min-w-0">
+          <div className="flex-2 min-w-0">
              <AdminChatPanel
               messages={messages}
               pinnedMessages={pinnedMessages}
