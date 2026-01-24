@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useState, useEffect } from 'react';
+import { useCallback, useState } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { ChatPanel } from './ChatPanel';
 import { StreamHeader } from './StreamHeader';
@@ -37,7 +37,6 @@ export function StreamContainer({
   viewerCount,
   streamStartTime,
   isChatOpen,
-  onToggleChat,
   onStreamEnd,
   visitorId,
   initialSeekTime,
@@ -47,14 +46,7 @@ export function StreamContainer({
     onMuteChange(!muted);
   }, [muted, onMuteChange]);
 
-  const [isDesktop, setIsDesktop] = useState(true);
 
-  useEffect(() => {
-    const checkDesktop = () => setIsDesktop(window.matchMedia('(min-width: 768px)').matches);
-    checkDesktop();
-    window.addEventListener('resize', checkDesktop);
-    return () => window.removeEventListener('resize', checkDesktop);
-  }, []);
 
   // Face Camera Player Component
   const FaceCamPlayer = (
@@ -76,11 +68,11 @@ export function StreamContainer({
   const [isPipTop, setIsPipTop] = useState(false);
 
   return (
-    <div className="flex flex-col md:flex-row h-screen bg-black overflow-hidden relative">
+    <div className="grid grid-cols-1 grid-rows-[auto_auto_1fr] md:flex md:flex-row h-screen bg-black overflow-hidden relative">
       {/* Left Column: Header + Main Video */}
-      <div className="w-full md:flex-1 flex flex-col min-w-0 md:h-full shrink-0">
+      <div className="contents md:flex md:flex-col md:w-full md:flex-1 md:min-w-0 md:h-full md:shrink-0">
         {/* Header moved inside left column */}
-        <div className="shrink-0">
+        <div className="md:shrink-0">
           <StreamHeader
             title={event.title}
             topic={event.topic}
@@ -88,13 +80,11 @@ export function StreamContainer({
             streamStartTime={streamStartTime}
             muted={muted}
             onMuteToggle={handleMuteToggle}
-            onToggleChat={onToggleChat}
-            isChatOpen={isChatOpen}
           />
         </div>
 
         {/* Main video area */}
-        <div className="relative bg-black md:p-4 w-full aspect-video md:aspect-auto md:flex-1 md:min-h-0 shrink-0 touch-none">
+        <div className="relative bg-black md:p-4 w-full aspect-video md:aspect-auto md:flex-1 md:min-h-0 shrink-0 touch-none row-start-2 col-start-1 z-0">
           <VideoPlayer
             url={screenUrl}
             muted={true} // Screen share is ALWAYS muted - audio comes from facecam
@@ -107,51 +97,52 @@ export function StreamContainer({
             initialSeekTime={initialSeekTime}
             className="w-full h-full md:rounded-xl overflow-hidden"
           />
-
-          {/* Mobile Floating Instructor Video (PiP) - Tap to toggle position */}
-          {!isDesktop && (
-            <div 
-              onClick={() => setIsPipTop(!isPipTop)}
-              className={`
-                absolute right-3 w-28 aspect-video bg-black rounded-lg overflow-hidden shadow-lg border border-neutral-800 z-20 cursor-pointer transition-all duration-300 ease-in-out
-                ${isPipTop ? 'top-3' : 'bottom-3'}
-              `}
-            >
-              {FaceCamPlayer}
-            </div>
-          )}
         </div>
       </div>
 
-      {/* Right Column: Sidebar (Fixed width on Desktop, Remaining height on Mobile) */}
+      {/* Right Column: Sidebar (Fixed width on Desktop, containing FaceCam and Chat) */}
       <div className={`
-        flex flex-col border-t md:border-t-0 md:border-l border-neutral-800 bg-black 
-        w-full md:w-[320px] lg:w-[380px] 
-        flex-1 md:flex-none md:h-full min-h-0
-        ${!isChatOpen ? 'hidden md:flex' : ''} 
+        contents 
+        md:flex md:flex-col md:border-t-0 md:border-l md:border-neutral-800 md:bg-black 
+        md:w-[320px] lg:md:w-[380px] 
+        md:flex-none md:h-full md:min-h-0
+        ${!isChatOpen ? 'md:hidden' : ''} 
       `}>
-        {/* Face cam - Desktop placement */}
-        {isDesktop && (
-          <div className="w-full aspect-video shrink-0 bg-black border-b border-neutral-800">
-            {FaceCamPlayer}
-          </div>
-        )}
+        {/* Face cam - Responsive Placement (PiP on Mobile, Static Block on Desktop) */}
+        <div 
+          onClick={() => setIsPipTop(!isPipTop)}
+          className={`
+            bg-black overflow-hidden transition-all duration-300 ease-in-out
+            
+            /* Mobile Styles (Floating PiP in Grid Cell) */
+            row-start-2 col-start-1 z-20 w-28 aspect-video rounded-lg shadow-lg border border-neutral-800 cursor-pointer justify-self-end m-3
+            ${isPipTop ? 'self-start mt-3' : 'self-end mb-3'}
 
-        {/* Poll Card (when active) */}
-        {visitorId && (
-          <div className="px-0 pb-0 shrink-0">
-            <PollVoteCard streamId={event.id} visitorId={visitorId} />
-          </div>
-        )}
+            /* Desktop Styles (Reset to Static Sidebar Block) */
+            md:static md:w-full md:aspect-video md:rounded-none md:shadow-none md:border-0 md:border-b md:border-neutral-800 md:z-auto md:cursor-default md:m-0 md:self-auto md:justify-self-auto
+          `}
+        >
+          {FaceCamPlayer}
+        </div>
 
-        {/* Chat */}
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
-          <ChatPanel
-            messages={messages}
-            onSendMessage={onSendMessage}
-            isSending={isSending}
-            isOpen={isChatOpen}
-          />
+        {/* Sidebar Content (Poll + Chat) */}
+        <div className="flex-1 overflow-hidden flex flex-col min-h-0 row-start-3 md:row-auto">
+          {/* Poll Card (when active) */}
+          {visitorId && (
+            <div className="px-0 pb-0 shrink-0 border-t border-neutral-800 md:border-t-0">
+              <PollVoteCard streamId={event.id} visitorId={visitorId} />
+            </div>
+          )}
+
+          {/* Chat */}
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <ChatPanel
+              messages={messages}
+              onSendMessage={onSendMessage}
+              isSending={isSending}
+              isOpen={isChatOpen}
+            />
+          </div>
         </div>
       </div>
     </div>

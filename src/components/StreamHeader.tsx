@@ -9,8 +9,6 @@ interface StreamHeaderProps {
   streamStartTime: number;
   muted: boolean;
   onMuteToggle: () => void;
-  onToggleChat?: () => void;
-  isChatOpen?: boolean;
 }
 
 export function StreamHeader({ 
@@ -20,8 +18,6 @@ export function StreamHeader({
   streamStartTime,
   muted,
   onMuteToggle,
-  onToggleChat,
-  isChatOpen = true,
 }: StreamHeaderProps) {
   const [elapsed, setElapsed] = useState(0);
 
