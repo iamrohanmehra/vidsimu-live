@@ -49,7 +49,7 @@ export function EmailVerificationModal({ isOpen, onVerified }: EmailVerification
 
   return (
     <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4">
-      <div className="bg-neutral-900 border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+      <div className="bg-black border border-neutral-800 rounded-2xl w-full max-w-md p-6 shadow-2xl">
         <div className="text-center mb-6">
           <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-linear-to-br from-violet-500 to-fuchsia-500 flex items-center justify-center">
             <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">

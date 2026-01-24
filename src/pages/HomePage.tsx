@@ -62,7 +62,7 @@ export function HomePage() {
               value={classId}
               onChange={(e) => setClassId(e.target.value)}
               disabled={isLoading}
-              className="bg-neutral-800/50 border-neutral-700 text-white text-center text-lg py-6 placeholder:text-neutral-500 focus:border-violet-500 focus:ring-violet-500"
+              className="bg-neutral-800/50 border-neutral-700 text-white text-center text-lg py-6 placeholder:text-amber-50 focus:border-violet-500 focus:ring-violet-500"
             />
           </div>
 

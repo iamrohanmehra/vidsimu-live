@@ -71,8 +71,8 @@ export function ConnectingScreen({
   }, [effectiveStreamStart, syncConfidence, canTransition, onConnectingComplete]);
 
   const containerClass = isOverlay
-    ? "absolute inset-0 z-50 flex flex-col items-center justify-center bg-neutral-100"
-    : "w-full h-screen flex flex-col items-center justify-center bg-neutral-100";
+    ? "absolute inset-0 z-50 flex flex-col items-center justify-center bg-black"
+    : "w-full h-screen flex flex-col items-center justify-center bg-black";
 
   return (
     <div className={containerClass}>
@@ -96,9 +96,9 @@ export function ConnectingScreen({
       </div>
 
       {/* Connecting Text */}
-      <p className="text-neutral-600 text-lg mb-3">
+      <p className="text-neutral-400 text-lg mb-3">
         Connecting to{' '}
-        <span className="font-bold text-neutral-900">{instructorName}'s</span> class
+        <span className="font-bold text-white">{instructorName}'s</span> class
       </p>
 
       {/* Sync Progress Indicator */}

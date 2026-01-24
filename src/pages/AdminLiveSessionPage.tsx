@@ -6,13 +6,14 @@ import { useVideoDuration } from '@/hooks/useVideoDuration';
 import {
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   updateDoc,
   doc,
   serverTimestamp,
   Timestamp,
+  writeBatch,
+  getDocs,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { messagesCollection } from '@/lib/collections';
@@ -66,7 +67,8 @@ export function AdminLiveSessionPage() {
   // Listen for messages
   useEffect(() => {
     if (!id) return;
-    const q = query(messagesCollection, where('streamId', '==', id), orderBy('timestamp', 'asc'));
+    // Use client-side sorting to avoid requiring a composite index
+    const q = query(messagesCollection, where('streamId', '==', id));
     
     return onSnapshot(q, (snapshot) => {
       const msgs: Message[] = [];
@@ -82,17 +84,23 @@ export function AdminLiveSessionPage() {
         if (msg.isPinned) pinned.push(msg);
         if (['public', 'broadcast'].includes(msg.messageType)) msgs.push(msg);
       });
+
+      // Sort by timestamp
+      msgs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
       setMessages(msgs);
       setPinnedMessages(pinned);
+    }, (error) => {
+      console.error('Error fetching admin messages:', error);
     });
   }, [id]);
 
   // Action Handlers
-  const handleSendMessage = useCallback(async (text: string, isAdmin: boolean) => {
+  const handleSendMessage = useCallback(async (text: string, isAdmin: boolean, targetUser?: { id: string, email: string, name: string }) => {
     if (!id || !text.trim()) return;
     setIsSending(true);
     try {
-      await addDoc(messagesCollection, {
+      const messageData: any = {
         streamId: id,
         userId: 'admin',
         name: 'Host',
@@ -102,7 +110,16 @@ export function AdminLiveSessionPage() {
         timestamp: serverTimestamp(),
         messageType: 'public',
         isAdminMessage: isAdmin,
-      });
+      };
+
+      if (targetUser) {
+        messageData.messageType = 'private';
+        messageData.targetUserId = targetUser.id;
+        messageData.targetUserEmail = targetUser.email;
+        messageData.targetUserName = targetUser.name;
+      }
+
+      await addDoc(messagesCollection, messageData);
     } finally { setIsSending(false); }
   }, [id]);
 
@@ -120,6 +137,9 @@ export function AdminLiveSessionPage() {
         timestamp: serverTimestamp(),
         messageType: 'broadcast',
         isAdminMessage: true,
+        isPinned: true,
+        pinnedAt: serverTimestamp(),
+        pinnedBy: 'admin',
       });
     } finally { setIsSending(false); }
   }, [id]);
@@ -137,6 +157,23 @@ export function AdminLiveSessionPage() {
       await updateDoc(messageRef, { isPinned: false, pinnedAt: null, pinnedBy: null });
     } catch (e) { console.error(e); }
   }, []);
+
+  const handleClearChat = useCallback(async () => {
+    if (!id) return;
+    try {
+      const q = query(messagesCollection, where('streamId', '==', id));
+      const snapshot = await getDocs(q);
+      
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc) => {
+        batch.delete(doc.ref);
+      });
+      
+      await batch.commit();
+    } catch (e) {
+      console.error('Error clearing chat:', e);
+    }
+  }, [id]);
 
   if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-neutral-500">Loading Command Center...</div>;
   if (!event) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Session Not Found</div>;
@@ -252,6 +289,7 @@ export function AdminLiveSessionPage() {
               onSendBroadcast={handleSendBroadcast}
               onPinMessage={handlePinMessage}
               onUnpinMessage={handleUnpinMessage}
+              onClearChat={handleClearChat}
               isSending={isSending}
             />
           </div>

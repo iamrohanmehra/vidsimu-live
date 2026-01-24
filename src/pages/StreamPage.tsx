@@ -284,6 +284,7 @@ export function StreamPage() {
         onToggleChat={handleToggleChat}
         onStreamEnd={handleStreamEnd}
         initialSeekTime={syncState.estimatedTime} // Pass optimistic position for immediate seeking
+        visitorId={clientId}
       />
 
       {/* Sync overlay - shown while videos are loading and syncing */}

@@ -83,7 +83,7 @@ export function VideoPlayer({
     <div className={`relative w-full h-full bg-black ${className}`}>
       {/* Video background for letterbox mode */}
       {resolvedObjectFit === 'contain' && (
-        <div className="absolute inset-0 bg-neutral-950 z-0" />
+        <div className="absolute inset-0 bg-black z-0" />
       )}
       
       <StreamPlayer

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { UserAvatar } from '@/components/ui/UserAvatar';
 import type { Viewer } from '@/types';
 
 interface AdminViewersListProps {
@@ -15,7 +16,7 @@ export function AdminViewersList({ viewers, viewerCount }: AdminViewersListProps
       v.email?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const getInitials = (name: string) => name?.charAt(0)?.toUpperCase() || '?';
+
 
   return (
     <div className="flex flex-col h-full bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden shadow-sm">
@@ -52,9 +53,12 @@ export function AdminViewersList({ viewers, viewerCount }: AdminViewersListProps
             <div key={viewer.id || idx} className="flex items-center gap-3 p-2 rounded-lg hover:bg-neutral-800/50 transition-colors group cursor-default">
               {/* Avatar */}
               <div className="relative shrink-0">
-                <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center text-xs font-medium text-neutral-300">
-                  {viewer.avatar ? <img src={viewer.avatar} className="w-full h-full rounded-full object-cover" /> : getInitials(viewer.name || viewer.email)}
-                </div>
+                <UserAvatar
+                  src={viewer.avatar}
+                  name={viewer.name}
+                  email={viewer.email}
+                  className="w-8 h-8"
+                />
                 <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 rounded-full border-2 border-neutral-900"></div>
               </div>
               

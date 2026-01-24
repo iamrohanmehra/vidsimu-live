@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Users } from 'lucide-react';
 
 interface StreamHeaderProps {
   title: string;
+  topic?: string;
   viewerCount: number;
   streamStartTime: number;
   muted: boolean;
@@ -13,6 +15,7 @@ interface StreamHeaderProps {
 
 export function StreamHeader({ 
   title, 
+  topic,
   viewerCount, 
   streamStartTime,
   muted,
@@ -50,38 +53,30 @@ export function StreamHeader({
   }, [elapsed]);
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/80 backdrop-blur-sm border-b border-neutral-800">
-      <div className="flex items-center gap-4">
-        {/* Live indicator */}
-        <div className="flex items-center gap-2">
-          <span className="relative flex h-2.5 w-2.5">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+    <header className="flex items-center justify-between px-4 py-3 bg-black border-b border-neutral-800">
+      {/* Title - Left side */}
+      <h1 className="text-neutral-200 font-regular truncate max-w-xl text-lg flex items-center gap-2">
+        <span className="truncate">{title}</span>
+        {topic && (
+          <span className="hidden md:inline text-neutral-600">
+            <span className="mx-2">|</span>
+            <span className="text-violet-400 truncate">{topic}</span>
           </span>
-          <span className="text-red-500 font-semibold text-sm uppercase">Live</span>
-        </div>
+        )}
+      </h1>
 
-        {/* Duration */}
-        <div className="flex items-center gap-1.5 text-neutral-400">
+      <div className="flex items-center gap-3">
+         {/* Duration */}
+        <div className="hidden md:flex items-center gap-1.5 text-neutral-400 bg-neutral-800/50 px-2 py-1 rounded-md">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <span className="text-sm font-mono">{formattedDuration}</span>
         </div>
-      </div>
 
-      {/* Title - hidden on mobile */}
-      <h1 className="hidden md:block text-white font-semibold truncate max-w-md">
-        {title}
-      </h1>
-
-      <div className="flex items-center gap-3">
         {/* Viewer count */}
-        <div className="flex items-center gap-1.5 text-neutral-400">
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-          </svg>
+        <div className="flex items-center gap-1.5 text-neutral-400 bg-neutral-800/50 px-2 py-1 rounded-md">
+          <Users className="w-4 h-4" />
           <span className="text-sm font-medium">{viewerCount.toLocaleString()}</span>
         </div>
 
@@ -109,19 +104,7 @@ export function StreamHeader({
           )}
         </button>
 
-        {/* Chat toggle (mobile) */}
-        {onToggleChat && (
-          <button
-            onClick={onToggleChat}
-            className={`md:hidden p-2 rounded-lg transition-colors ${
-              isChatOpen ? 'bg-violet-600 text-white' : 'bg-neutral-800 text-neutral-400 hover:text-white'
-            }`}
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-            </svg>
-          </button>
-        )}
+        {/* Chat toggle button removed for mobile/smaller screens as requested */}
 
         {/* Help link */}
         <Link

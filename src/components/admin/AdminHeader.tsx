@@ -16,7 +16,7 @@ export function AdminHeader({
   isLive = true,
 }: AdminHeaderProps) {
   return (
-    <header className="flex items-center justify-between px-6 py-4 bg-neutral-900 border-b border-neutral-800">
+    <header className="flex items-center justify-between px-6 py-4 bg-black border-b border-neutral-800">
       {/* Left: Title and Live Indicator */}
       <div className="flex items-center gap-4">
         <div>

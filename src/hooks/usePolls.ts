@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import {
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   updateDoc,
@@ -31,8 +30,7 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
 
     const q = query(
       pollsCollection,
-      where('streamId', '==', streamId),
-      orderBy('createdAt', 'desc')
+      where('streamId', '==', streamId)
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -54,6 +52,9 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
           active = poll;
         }
       });
+
+      // Sort by createdAt desc (newest first)
+      pollList.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 
       setPolls(pollList);
       setActivePoll(active);

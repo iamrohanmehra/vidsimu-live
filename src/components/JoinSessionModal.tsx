@@ -18,7 +18,7 @@ export function JoinSessionModal({ isOpen, event, onJoin }: JoinSessionModalProp
 
   return (
     <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4">
-      <div className="bg-linear-to-b from-neutral-900 to-neutral-950 border border-neutral-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl text-center">
+      <div className="bg-black border border-neutral-800 rounded-2xl w-full max-w-lg p-8 shadow-2xl text-center">
         {/* Live indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <span className="relative flex h-3 w-3">

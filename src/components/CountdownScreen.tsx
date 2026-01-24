@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { Event } from '@/types';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
+import { useCurrentViewers } from '@/hooks/useCurrentViewers';
 
 interface CountdownScreenProps {
   event: Event;
@@ -11,6 +12,7 @@ interface CountdownScreenProps {
 export function CountdownScreen({ event, targetTime, onCountdownComplete }: CountdownScreenProps) {
   const [timeLeft, setTimeLeft] = useState(calculateTimeLeft(targetTime));
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const { viewerCount } = useCurrentViewers({ streamId: event.id });
 
   // Enable synchronized background music during countdown (only after user interaction)
   // Music starts 10 minutes before session and syncs across all participants
@@ -52,43 +54,18 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete }: Coun
     return () => clearInterval(interval);
   }, [targetTime, onCountdownComplete]);
 
-  const formattedDate = useMemo(() => {
-    const date = new Date(targetTime);
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  }, [targetTime]);
-
-  const formattedTime = useMemo(() => {
-    const date = new Date(targetTime);
-    return date.toLocaleTimeString('en-US', {
-      hour: 'numeric',
-      minute: '2-digit',
-      hour12: true,
-    });
-  }, [targetTime]);
-
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-violet-950 flex items-center justify-center p-4">
-      <div className="text-center max-w-2xl mx-auto">
-        {/* Upcoming badge */}
-        <div className="inline-flex items-center gap-2 bg-violet-500/20 border border-violet-500/30 rounded-full px-4 py-1.5 mb-8">
-          <span className="w-2 h-2 bg-violet-500 rounded-full animate-pulse"></span>
-          <span className="text-violet-400 text-sm font-medium">Upcoming Session</span>
-        </div>
-
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative">
+      <div className="text-center max-w-2xl mx-auto flex flex-col items-center">
         {/* Event title */}
-        <h1 className="text-4xl md:text-5xl font-bold text-white mb-4 leading-tight">
+        <h1 className="text-[28px] font-semibold text-neutral-200 mb-2 leading-tight">
           {event.title}
         </h1>
 
         {/* Event topic */}
         {event.topic && (
           <p className="text-xl text-neutral-400 mb-8">
-            {event.topic}
+            LIVE session <span className="text-violet-400">"{event.topic}"</span> begins in
           </p>
         )}
 
@@ -102,46 +79,72 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete }: Coun
           </div>
         )}
 
-        {/* Date and time */}
-        <div className="flex flex-col items-center gap-1 mb-12">
-          <p className="text-lg text-white">{formattedDate}</p>
-          <p className="text-2xl font-semibold text-violet-400">{formattedTime}</p>
-        </div>
-
         {/* Countdown */}
-        <div className="grid grid-flow-col gap-5 text-center auto-cols-max justify-center mb-12">
-          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
-            <span className="countdown font-mono text-5xl">
-              <span style={{"--value":timeLeft.hours} as React.CSSProperties}></span>
-            </span>
-            hours
+        <div className="grid grid-flow-col gap-2 text-center auto-cols-max justify-center mb-8 text-white items-center">
+          <div className="flex flex-col">
+            <div className="flex items-center justify-center gap-1">
+              {timeLeft.hours.toString().padStart(2, '0').split('').map((digit, i) => (
+                <span key={i} className="countdown font-bold text-[72px]">
+                  <span style={{"--value": parseInt(digit)} as React.CSSProperties}>
+                    {digit}
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
-            <span className="countdown font-mono text-5xl">
-              <span style={{"--value":timeLeft.minutes} as React.CSSProperties}></span>
-            </span>
-            min
+          
+          <div className="flex flex-col justify-center pb-2">
+            <span className="font-bold text-[72px] text-neutral-600">:</span>
           </div>
-          <div className="flex flex-col p-2 bg-neutral-800/50 backdrop-blur rounded-box text-neutral-content items-center min-w-20">
-            <span className="countdown font-mono text-5xl">
-              <span style={{"--value":timeLeft.seconds} as React.CSSProperties}></span>
-            </span>
-            sec
+
+          <div className="flex flex-col">
+            <div className="flex items-center justify-center gap-1">
+              {timeLeft.minutes.toString().padStart(2, '0').split('').map((digit, i) => (
+                <span key={i} className="countdown font-bold text-[72px]">
+                  <span style={{"--value": parseInt(digit)} as React.CSSProperties}>
+                    {digit}
+                  </span>
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-col justify-center pb-2">
+            <span className="font-bold text-[72px] text-neutral-600">:</span>
+          </div>
+
+          <div className="flex flex-col">
+            <div className="flex items-center justify-center gap-1">
+              {timeLeft.seconds.toString().padStart(2, '0').split('').map((digit, i) => (
+                <span key={i} className="countdown font-bold text-[72px]">
+                  <span style={{"--value": parseInt(digit)} as React.CSSProperties}>
+                    {digit}
+                  </span>
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Helper text */}
-        <p className="text-neutral-500 text-sm">
-          This page will automatically refresh when the session starts
-        </p>
+        {/* Users waiting capsule */}
+        <div className="inline-flex items-center gap-2 bg-neutral-800/50 backdrop-blur border border-neutral-700/50 rounded-full px-4 py-1.5 mb-8 text-neutral-400">
+          <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+          <span className="text-[12px] font-medium">
+            {viewerCount} users waiting
+          </span>
+        </div>
       </div>
+
+      {/* Helper text moved to bottom */}
+      <p className="text-neutral-500 text-sm absolute bottom-8 left-0 w-full text-center">
+        This page will automatically refresh when the session starts
+      </p>
     </div>
   );
 }
 
 interface TimeLeft {
   total: number;
-  days: number;
   hours: number;
   minutes: number;
   seconds: number;
@@ -153,8 +156,7 @@ function calculateTimeLeft(targetTime: number): TimeLeft {
 
   const seconds = Math.floor((total / 1000) % 60);
   const minutes = Math.floor((total / 1000 / 60) % 60);
-  const hours = Math.floor(total / 1000 / 60 / 60); // Total hours including days
-  const days = 0; // Unused but kept for type signature compatibility if needed, though better to remove from type too.
+  const hours = Math.floor(total / (1000 * 60 * 60)); // Total hours
 
-  return { total, days, hours, minutes, seconds };
+  return { total, hours, minutes, seconds };
 }

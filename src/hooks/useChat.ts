@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from 'react';
 import {
   query,
   where,
-  orderBy,
   onSnapshot,
   addDoc,
   serverTimestamp,
@@ -37,26 +36,41 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
   useEffect(() => {
     if (!enabled || !user || !streamId) return;
 
+    // Use client-side filtering preventing index issues
     const q = query(
       messagesCollection,
-      where('streamId', '==', streamId),
-      where('email', '==', user.email),
-      where('messageType', '==', 'public'),
-      orderBy('timestamp', 'desc')
+      where('streamId', '==', streamId)
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(q, (snapshot) => {
       const messages: Message[] = [];
       snapshot.forEach((doc) => {
         const data = doc.data();
-        messages.push({
+        const msg = {
           id: doc.id,
           ...data,
           timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(),
-        } as Message);
+        } as Message;
+
+        // Filter logic:
+        // 1. Show Broadcasts
+        // 2. Show Admin/Host messages (public)
+        // 3. Show User's OWN messages (public)
+        // 4. Hide other users' messages (Restricted Chat)
+        
+        const isBroadcast = msg.messageType === 'broadcast';
+        const isAdmin = msg.isAdminMessage;
+        const isOwnMessage = msg.email === user.email;
+
+        if (isBroadcast || isAdmin || isOwnMessage) {
+          messages.push(msg);
+        }
       });
-      // Reverse to show oldest first
-      setUserMessages(messages.reverse());
+      
+      // Sort oldest first
+      messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      setUserMessages(messages);
     });
 
     return () => unsubscribe();
@@ -66,12 +80,12 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
   useEffect(() => {
     if (!enabled || !user || !streamId) return;
 
+    // Use client-side filtering preventing index issues
     const q = query(
       messagesCollection,
       where('streamId', '==', streamId),
       where('messageType', '==', 'private'),
-      where('targetUserEmail', '==', user.email),
-      orderBy('timestamp', 'desc')
+      where('targetUserEmail', '==', user.email)
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(q, (snapshot) => {
@@ -84,8 +98,11 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
           timestamp: data.timestamp instanceof Timestamp ? data.timestamp.toDate() : new Date(),
         } as Message);
       });
-      // Reverse to show oldest first
-      setPrivateMessages(messages.reverse());
+      
+      // Sort oldest first
+      messages.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+      
+      setPrivateMessages(messages);
     });
 
     return () => unsubscribe();
