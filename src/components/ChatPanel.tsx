@@ -50,7 +50,7 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true }:
       {pinnedMessages.length > 0 && (
         <div className="bg-black border-b border-neutral-800 px-4 py-2 md:px-3 shrink-0">
           <div className="text-[10px] font-semibold text-neutral-400 mb-1 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-violet-500"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
             Broadcast
           </div>
           <div className="space-y-2 max-h-24 overflow-y-auto custom-scrollbar">
@@ -118,7 +118,7 @@ export function ChatPanel({ messages, onSendMessage, isSending, isOpen = true }:
               flex items-center justify-center h-9 w-9 rounded-full transition-all duration-300 shrink-0
               ${(!input.trim() || isSending)
                 ? 'bg-neutral-800 text-neutral-500 scale-95 opacity-50 cursor-not-allowed'
-                : 'bg-violet-600 text-white hover:bg-violet-500 shadow-lg shadow-violet-500/20'
+                : 'bg-white text-black hover:bg-neutral-200 shadow-md'
               }
             `}
           >

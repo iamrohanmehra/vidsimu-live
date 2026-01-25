@@ -101,7 +101,7 @@ export function VideoPlayer({
       {isLoading && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/60">
           <div className="text-center">
-            <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-12 h-12 border-4 border-white border-t-transparent rounded-full animate-spin mx-auto mb-4" />
             <p className="text-white/80 text-sm">Connecting to stream...</p>
           </div>
         </div>
@@ -128,7 +128,7 @@ export function VideoPlayer({
           <Button
             onClick={handleJoinAudio}
             size="sm"
-            className="bg-violet-600/90 hover:bg-violet-500 text-white font-semibold px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"
+            className="bg-white/90 hover:bg-white text-black font-semibold px-4 py-2 rounded-lg shadow-lg backdrop-blur-sm"
           >
             <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />

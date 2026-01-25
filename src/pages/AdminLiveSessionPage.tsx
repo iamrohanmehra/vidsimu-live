@@ -20,10 +20,12 @@ import { messagesCollection } from '@/lib/collections';
 import { AdminChatPanel } from '@/components/admin/AdminChatPanel';
 import { AdminViewersList } from '@/components/admin/AdminViewersList';
 import { AdminPollManager } from '@/components/admin/AdminPollManager';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Separator } from '@/components/ui/separator';
+import { VideoPlayer } from '@/components/VideoPlayer';
+import { CountdownScreen } from '@/components/CountdownScreen';
 import type { Event, Message } from '@/types';
-
-// Metric Card Component
-
 
 export function AdminLiveSessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -33,11 +35,29 @@ export function AdminLiveSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [isPreviewMuted, setIsPreviewMuted] = useState(true);
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return document.documentElement.classList.contains('dark');
+    }
+    return true;
+  });
 
   const { viewerCount, viewers } = useCurrentViewers({
     streamId: id || '',
     enabled: !!id,
   });
+
+  // Theme toggle
+  const toggleTheme = useCallback(() => {
+    const newIsDark = !isDark;
+    setIsDark(newIsDark);
+    if (newIsDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDark]);
 
   // Timer
   useEffect(() => {
@@ -45,7 +65,7 @@ export function AdminLiveSessionPage() {
     return () => clearInterval(timer);
   }, []);
 
-  // Fetch duration from face cam URL (assuming it's reliable)
+  // Fetch duration from face cam URL
   const streamDuration = useVideoDuration(event?.url);
 
   // Load event data
@@ -67,7 +87,6 @@ export function AdminLiveSessionPage() {
   // Listen for messages
   useEffect(() => {
     if (!id) return;
-    // Use client-side sorting to avoid requiring a composite index
     const q = query(messagesCollection, where('streamId', '==', id));
     
     return onSnapshot(q, (snapshot) => {
@@ -85,7 +104,6 @@ export function AdminLiveSessionPage() {
         if (['public', 'broadcast'].includes(msg.messageType)) msgs.push(msg);
       });
 
-      // Sort by timestamp
       msgs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
       
       setMessages(msgs);
@@ -175,114 +193,243 @@ export function AdminLiveSessionPage() {
     }
   }, [id]);
 
-  if (isLoading) return <div className="min-h-screen bg-black flex items-center justify-center text-neutral-500">Loading Command Center...</div>;
-  if (!event) return <div className="min-h-screen bg-black flex items-center justify-center text-white">Session Not Found</div>;
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading Command Center...</p>
+      </div>
+    );
+  }
+
+  if (!event) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-foreground">Session Not Found</p>
+      </div>
+    );
+  }
+
+  // Time formatting helper
+  const formatTime = (ms: number) => {
+    const s = Math.floor((ms / 1000) % 60);
+    const m = Math.floor((ms / (1000 * 60)) % 60);
+    const h = Math.floor((ms / (1000 * 60 * 60)));
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
+  // Calculate stream timing
+  const getStreamStatus = () => {
+    if (!event?.time) {
+      return { status: 'unscheduled' as const };
+    }
+
+    const start = new Date(event.time).getTime();
+    const now = currentTime.getTime();
+    
+    let durationMs = 60 * 60 * 1000;
+    if (streamDuration && streamDuration > 0) {
+      durationMs = streamDuration * 1000;
+    } else if (event.duration) {
+      durationMs = event.duration * 60 * 1000;
+    }
+
+    if (now < start) {
+      return { status: 'scheduled' as const, startTime: new Date(event.time) };
+    }
+
+    const elapsed = now - start;
+
+    if (elapsed >= durationMs) {
+      return { status: 'ended' as const };
+    }
+
+    return { status: 'live' as const, elapsed, duration: durationMs };
+  };
+
+  const streamStatus = getStreamStatus();
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-white p-6 font-sans">
-      <div className="max-w-[1600px] mx-auto h-[calc(100vh-48px)] flex flex-col gap-6">
-        
-        {/* Top Header & Stats */}
-        <div className="flex flex-col gap-6 shrink-0">
-          <div className="flex justify-between items-center border-b border-neutral-800 pb-4">
+    <div className="min-h-screen bg-background text-foreground">
+      {/* Main Layout */}
+      <div className="h-screen flex flex-col">
+        {/* Header */}
+        <header className="border-b border-border px-6 py-4">
+          <div className="flex justify-between items-center">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold tracking-tight">{event.title}</h1>
-                <span className="px-2 py-0.5 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span> Live
-                </span>
-
-              </div>
-              <div className="flex items-center gap-2 text-sm text-neutral-500">
-                <span>Command Center • {id}</span>
-                {event.topic && (
-                  <>
-                    <span>•</span>
-                    <span className="text-violet-400 font-medium">{event.topic}</span>
-                  </>
+              <div className="flex items-center gap-3">
+                <h1 className="text-xl font-semibold">{event.title}</h1>
+                {streamStatus.status === 'live' && (
+                  <span className="px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive"></span>
+                    Live
+                  </span>
                 )}
               </div>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                Command Center • {id}
+                {event.topic && ` • ${event.topic}`}
+              </p>
             </div>
-            <div className="text-right flex items-center gap-8">
-               <div className="flex flex-col items-end">
-                  <p className="text-3xl font-bold text-white tracking-tight leading-none">{viewerCount}</p>
-                  <p className="text-xs text-neutral-500 font-medium uppercase tracking-wider mt-1">Watching</p>
-               </div>
-               <div className="flex flex-col items-end min-w-[200px]">
-                  {(() => {
-                    // 1. Check if schedule exists
-                    if (!event?.time) {
-                      return (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-neutral-800/50 border border-neutral-700">
-                          <span className="w-2 h-2 rounded-full bg-neutral-500"></span>
-                          <span className="text-xs font-medium text-neutral-400">Stream not scheduled</span>
-                        </div>
-                      );
-                    }
+            
+            <div className="flex items-center gap-6">
+              {/* Metrics */}
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <p className="text-2xl font-bold tabular-nums">{viewerCount}</p>
+                  <p className="text-xs text-muted-foreground">Watching</p>
+                </div>
+                
+                <Separator orientation="vertical" className="h-10" />
+                
+                <div className="text-right min-w-[140px]">
+                  {streamStatus.status === 'unscheduled' && (
+                    <p className="text-sm text-muted-foreground">Not scheduled</p>
+                  )}
+                  {streamStatus.status === 'scheduled' && (
+                    <div>
+                      <p className="text-lg font-mono text-amber-500">
+                        {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Scheduled</p>
+                    </div>
+                  )}
+                  {streamStatus.status === 'ended' && (
+                    <p className="text-sm font-medium text-destructive">Ended</p>
+                  )}
+                  {streamStatus.status === 'live' && (
+                    <div>
+                      <p className="text-lg font-mono tabular-nums">
+                        {formatTime(streamStatus.elapsed)} <span className="text-muted-foreground">/</span> {formatTime(streamStatus.duration)}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Duration</p>
+                    </div>
+                  )}
+                </div>
+              </div>
 
-                    const start = new Date(event.time).getTime();
-                    const now = currentTime.getTime();
-                    
-                    // Priority: 1. Fetched from video (streamDuration) 2. Manual event.duration 3. Default 60 mins
-                    // Duration calculation must be consistent
-                    let durationMs = 60 * 60 * 1000;
-                    if (streamDuration && streamDuration > 0) {
-                      durationMs = streamDuration * 1000;
-                    } else if (event.duration) {
-                      durationMs = event.duration * 60 * 1000;
-                    }
+              <Separator orientation="vertical" className="h-10" />
 
-                    // 2. Check if stream hasn't started
-                     if (now < start) {
-                      return (
-                         <div className="flex flex-col items-end">
-                            <p className="text-xl font-mono text-amber-400">
-                              {new Date(event.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                            <p className="text-xs text-amber-500/70 font-medium uppercase tracking-wider mt-1">Scheduled Start</p>
-                         </div>
-                      );
-                    }
+              {/* Preview Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsPreviewMuted(!isPreviewMuted)}
+                className="gap-2"
+              >
+                {isPreviewMuted ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
+                ) : (
+                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
+                )}
+                {isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}
+              </Button>
 
-                    const elapsed = now - start;
+              {/* Preview Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => window.open(`/preview/${id}`, '_blank')}
+                className="gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                </svg>
+                Preview
+              </Button>
 
-                    // 3. Check if stream ended
-                    if (elapsed >= durationMs) {
-                       return (
-                        <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-red-950/30 border border-red-500/30">
-                          <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                          <span className="text-xs font-bold text-red-400 uppercase tracking-wide">Stream Ended</span>
-                        </div>
-                      );
-                    }
-
-                    // 4. Active Stream Timer
-                    const formatTime = (ms: number) => {
-                      const s = Math.floor((ms / 1000) % 60);
-                      const m = Math.floor((ms / (1000 * 60)) % 60);
-                      const h = Math.floor((ms / (1000 * 60 * 60)));
-                      return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-                    };
-
-                    return (
-                      <>
-                        <p className="text-2xl font-mono text-neutral-300">
-                          {formatTime(elapsed)} <span className="text-neutral-600 mx-2">/</span> {formatTime(durationMs)}
-                        </p>
-                        <p className="text-xs text-neutral-500 uppercase tracking-wider text-right">Playback / Duration</p>
-                      </>
-                    );
-                  })()}
-               </div>
+              {/* Theme Toggle */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={toggleTheme}
+                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDark ? (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                ) : (
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                  </svg>
+                )}
+              </Button>
             </div>
           </div>
-        </div>
+        </header>
 
-        {/* Dashboard Panels */}
-        <div className="flex-1 flex gap-6 overflow-hidden">
-          {/* Main Chat Console (65%) */}
-          <div className="flex-2 min-w-0">
-             <AdminChatPanel
+        {/* Content */}
+        {/* Content */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Main Content Area - Video / Countdown */}
+          <div className="flex-1 bg-black relative overflow-hidden flex flex-col justify-center">
+            {streamStatus.status === 'live' ? (
+              <div className="relative w-full h-full">
+                {/* Main: Screen Share */}
+                <div className="absolute inset-0 z-0">
+                  <VideoPlayer
+                    url={event.screenUrl || event.url} // Fallback to main URL if no screen share
+                    muted={true} // Screen share audio usually muted or mixed in facecam
+                    onMuteChange={() => {}}
+                    isFaceVideo={false}
+                    objectFit="contain"
+                    streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                    className="w-full h-full"
+                  />
+                </div>
+
+                {/* Overlay: Face Cam (if screen share exists, otherwise main is facecam) */}
+                {event.screenUrl && (
+                  <div className="absolute bottom-4 right-4 z-10 w-48 md:w-64 aspect-video rounded-lg overflow-hidden shadow-2xl border border-white/10 bg-black">
+                    <VideoPlayer
+                      url={event.url}
+                      muted={isPreviewMuted}
+                      onMuteChange={setIsPreviewMuted}
+                      isFaceVideo={true}
+                      objectFit="cover"
+                      streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                      className="w-full h-full"
+                    />
+                  </div>
+                )}
+                
+                {/* Audio control for main video if no screenshare (acts as facecam main) */}
+                {!event.screenUrl && (
+                   <div className="absolute top-4 right-4 z-20">
+                     {/* Mute control is in header, but we need to ensure audio plays from this player */}
+                     {/* Currently VideoPlayer prop 'muted' is hardcoded true above for screen share slot. 
+                         If we use main slot for facecam, we should pass isPreviewMuted there. 
+                         Let's refine logic below.
+                     */}
+                   </div>
+                )}
+              </div>
+            ) : streamStatus.status === 'ended' ? (
+              <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="text-center">
+                  <h2 className="text-2xl font-bold text-foreground">Session Ended</h2>
+                  <p className="mt-2">Thank you for hosting!</p>
+                </div>
+              </div>
+            ) : (
+              // Scheduled / Unscheduled -> Countdown
+              <div className="transform scale-[0.6] origin-center h-full w-full flex items-center justify-center">
+                {event.time ? (
+                  <CountdownScreen 
+                    event={event} 
+                    targetTime={new Date(event.time).getTime()} 
+                    onCountdownComplete={() => {}} 
+                  />
+                ) : (
+                  <div className="text-muted-foreground">Not Scheduled</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Chat Panel - Same width as sidebar */}
+          <aside className="w-[360px] border-l border-border flex flex-col">
+            <AdminChatPanel
               messages={messages}
               pinnedMessages={pinnedMessages}
               onSendMessage={handleSendMessage}
@@ -292,17 +439,35 @@ export function AdminLiveSessionPage() {
               onClearChat={handleClearChat}
               isSending={isSending}
             />
-          </div>
+          </aside>
 
-          {/* Sidebar (35%) - Viewers + Polls */}
-          <div className="flex-1 min-w-[300px] max-w-[400px] flex flex-col gap-4 overflow-hidden">
-             <div className="flex-1 min-h-0 overflow-hidden">
-               <AdminViewersList viewers={viewers} viewerCount={viewerCount} />
-             </div>
-             <div className="h-[45%] min-h-[250px]">
-               <AdminPollManager streamId={id || ''} />
-             </div>
-          </div>
+          {/* Sidebar with Tabs */}
+          <aside className="w-[360px] border-l border-border flex flex-col">
+            <Tabs defaultValue="audience" className="flex-1 flex flex-col">
+              <div className="px-4 pt-3">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="audience">
+                    Audience ({viewerCount})
+                  </TabsTrigger>
+                  <TabsTrigger value="polls">
+                    Polls
+                  </TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <TabsContent value="audience" className="flex-1 m-0 overflow-hidden">
+                <div className="h-full">
+                  <AdminViewersList viewers={viewers} viewerCount={viewerCount} />
+                </div>
+              </TabsContent>
+              
+              <TabsContent value="polls" className="flex-1 m-0 overflow-hidden">
+                <div className="h-full">
+                  <AdminPollManager streamId={id || ''} />
+                </div>
+              </TabsContent>
+            </Tabs>
+          </aside>
         </div>
       </div>
     </div>

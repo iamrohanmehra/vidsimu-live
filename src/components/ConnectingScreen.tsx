@@ -81,16 +81,16 @@ export function ConnectingScreen({
         <div className="relative flex items-center justify-center w-full h-full">
           {/* Pulse Animation Rings - Multiple for larger effect */}
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="w-full h-full bg-violet-400 opacity-20 rounded-full animate-pulse-ring" />
+            <div className="w-full h-full bg-neutral-700 opacity-50 rounded-full animate-pulse-ring" />
           </div>
           <div className="absolute inset-2 flex items-center justify-center">
-            <div className="w-full h-full bg-violet-500 opacity-15 rounded-full animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
+            <div className="w-full h-full bg-neutral-600 opacity-30 rounded-full animate-pulse-ring" style={{ animationDelay: '0.5s' }} />
           </div>
           {/* Instructor Avatar */}
           <img
             src={instructorImage}
             alt={instructorName}
-            className="h-28 w-28 rounded-full object-cover relative z-10 border-4 border-white shadow-lg"
+            className="h-28 w-28 rounded-full object-cover relative z-10 border-4 border-neutral-800 shadow-lg"
           />
         </div>
       </div>
@@ -105,13 +105,13 @@ export function ConnectingScreen({
       <div className="flex items-center gap-2 text-sm text-neutral-500">
         {syncConfidence === 'low' && (
           <>
-            <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             <span>Preparing session...</span>
           </>
         )}
         {syncConfidence === 'medium' && (
           <>
-            <div className="w-4 h-4 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
+            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             <span>Syncing video...</span>
           </>
         )}

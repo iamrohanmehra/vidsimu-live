@@ -54,9 +54,9 @@ export function StreamHeader({
       <h1 className="text-neutral-200 font-regular truncate max-w-xl text-lg flex items-center gap-2">
         <span className="truncate">{title}</span>
         {topic && (
-          <span className="hidden md:inline text-neutral-600">
+          <span className="hidden md:inline text-neutral-500">
             <span className="mx-2">|</span>
-            <span className="text-violet-400 truncate">{topic}</span>
+            <span className="text-neutral-200 truncate">{topic}</span>
           </span>
         )}
       </h1>

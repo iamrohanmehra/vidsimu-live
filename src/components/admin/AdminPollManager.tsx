@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { usePolls } from '@/hooks/usePolls';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import type { Poll } from '@/types';
 
 interface AdminPollManagerProps {
@@ -41,41 +43,32 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
   const endedPolls = polls.filter(p => p.status === 'ended').slice(0, 5);
 
   return (
-    <div className="flex flex-col h-full bg-neutral-900 border border-neutral-800 rounded-xl overflow-hidden">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-neutral-800 flex justify-between items-center">
-        <h2 className="font-semibold text-neutral-200 flex items-center gap-2">
-          <svg className="w-4 h-4 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-          </svg>
-          Polls
-        </h2>
+      <div className="p-4 border-b border-border flex justify-between items-center">
+        <span className="text-sm font-medium text-foreground">Manage Polls</span>
         {!isCreating && (
-          <button
-            onClick={() => setIsCreating(true)}
-            className="text-xs px-3 py-1 bg-violet-600 hover:bg-violet-500 text-white rounded-lg transition-colors"
-          >
-            + New Poll
-          </button>
+          <Button size="sm" onClick={() => setIsCreating(true)}>
+            + New
+          </Button>
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {/* Create Poll Form */}
         {isCreating && (
-          <div className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-4 space-y-3">
-            <input
+          <div className="rounded-lg border border-border bg-card p-4 space-y-3">
+            <Input
               type="text"
               placeholder="Poll question..."
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
-              className="w-full bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-2 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-violet-500"
             />
             
             <div className="space-y-2">
               {options.map((opt, idx) => (
                 <div key={idx} className="flex gap-2">
-                  <input
+                  <Input
                     type="text"
                     placeholder={`Option ${idx + 1}`}
                     value={opt}
@@ -84,51 +77,50 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
                       newOpts[idx] = e.target.value;
                       setOptions(newOpts);
                     }}
-                    className="flex-1 bg-neutral-900 border border-neutral-700 rounded-lg px-3 py-1.5 text-sm text-white placeholder-neutral-500 focus:outline-none focus:border-violet-500"
                   />
                   {options.length > 2 && (
-                    <button onClick={() => handleRemoveOption(idx)} className="text-neutral-500 hover:text-red-400">
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-                    </button>
+                    <Button variant="ghost" size="icon" onClick={() => handleRemoveOption(idx)} className="text-muted-foreground hover:text-destructive shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                    </Button>
                   )}
                 </div>
               ))}
               {options.length < 6 && (
-                <button onClick={handleAddOption} className="text-xs text-violet-400 hover:text-violet-300">+ Add option</button>
+                <button onClick={handleAddOption} className="text-xs text-primary hover:underline">+ Add option</button>
               )}
             </div>
 
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
-                <input type="radio" name="type" checked={pollType === 'single'} onChange={() => setPollType('single')} className="accent-violet-500" />
-                Single choice
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input type="radio" name="type" checked={pollType === 'single'} onChange={() => setPollType('single')} className="accent-primary" />
+                Single
               </label>
-              <label className="flex items-center gap-2 text-sm text-neutral-400 cursor-pointer">
-                <input type="radio" name="type" checked={pollType === 'multiple'} onChange={() => setPollType('multiple')} className="accent-violet-500" />
-                Multiple choice
+              <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                <input type="radio" name="type" checked={pollType === 'multiple'} onChange={() => setPollType('multiple')} className="accent-primary" />
+                Multiple
               </label>
             </div>
 
             <div className="flex gap-2 pt-2">
-              <button onClick={handleCreatePoll} className="flex-1 bg-violet-600 hover:bg-violet-500 text-white text-sm py-2 rounded-lg transition-colors">
-                Create Poll
-              </button>
-              <button onClick={() => setIsCreating(false)} className="px-4 text-neutral-400 hover:text-white text-sm">
+              <Button onClick={handleCreatePoll} className="flex-1" size="sm">
+                Create
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setIsCreating(false)}>
                 Cancel
-              </button>
+              </Button>
             </div>
           </div>
         )}
 
         {/* Active Poll */}
         {activePoll && (
-          <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-4">
+          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
             <div className="flex items-center gap-2 mb-3">
               <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              <span className="text-xs font-bold text-emerald-400 uppercase">Live Poll</span>
-              <span className="ml-auto text-xs text-neutral-400">{activePoll.totalVotes} votes</span>
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Live</span>
+              <span className="ml-auto text-xs text-muted-foreground">{activePoll.totalVotes} votes</span>
             </div>
-            <p className="text-white font-medium mb-3">{activePoll.question}</p>
+            <p className="text-foreground font-medium text-sm mb-3">{activePoll.question}</p>
             
             {/* Results */}
             <div className="space-y-2 mb-4">
@@ -137,10 +129,10 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
                 return (
                   <div key={opt.id}>
                     <div className="flex justify-between text-xs mb-1">
-                      <span className="text-neutral-300">{opt.text}</span>
-                      <span className="text-neutral-400">{pct}%</span>
+                      <span className="text-muted-foreground">{opt.text}</span>
+                      <span className="text-muted-foreground tabular-nums">{pct}%</span>
                     </div>
-                    <div className="h-2 bg-neutral-800 rounded-full overflow-hidden">
+                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
                       <div 
                         className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                         style={{ width: `${pct}%` }}
@@ -152,22 +144,22 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
             </div>
 
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => endPoll(activePoll.id!)}
-                className="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 text-sm py-2 rounded-lg transition-colors border border-red-500/30"
+                className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
               >
-                End Poll
-              </button>
-              <button
+                End
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => toggleResultsVisibility(activePoll.id!, !activePoll.resultsVisible)}
-                className={`flex-1 text-sm py-2 rounded-lg transition-colors border ${
-                  activePoll.resultsVisible
-                    ? 'bg-amber-500/20 text-amber-400 border-amber-500/30'
-                    : 'bg-neutral-800 text-neutral-400 border-neutral-700'
-                }`}
+                className="flex-1"
               >
-                {activePoll.resultsVisible ? 'Hide Results' : 'Share Results'}
-              </button>
+                {activePoll.resultsVisible ? 'Hide' : 'Show'} Results
+              </Button>
             </div>
           </div>
         )}
@@ -175,17 +167,19 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
         {/* Draft Polls */}
         {draftPolls.length > 0 && (
           <div>
-            <h3 className="text-xs font-bold text-neutral-500 uppercase mb-2">Draft Polls</h3>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase mb-2">Drafts</h3>
             <div className="space-y-2">
               {draftPolls.map((poll) => (
-                <div key={poll.id} className="bg-neutral-800/50 border border-neutral-700 rounded-lg p-3 flex justify-between items-center">
-                  <p className="text-sm text-neutral-300 truncate flex-1">{poll.question}</p>
-                  <button
+                <div key={poll.id} className="rounded-lg border border-border bg-card p-3 flex justify-between items-center">
+                  <p className="text-sm text-foreground truncate flex-1">{poll.question}</p>
+                  <Button
+                    size="sm"
+                    variant="default"
                     onClick={() => launchPoll(poll.id!)}
-                    className="ml-2 px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs rounded transition-colors"
+                    className="ml-2"
                   >
                     Launch
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -195,12 +189,12 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
         {/* Recent Ended Polls */}
         {endedPolls.length > 0 && (
           <div>
-            <h3 className="text-xs font-bold text-neutral-500 uppercase mb-2">Recent Polls</h3>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase mb-2">Recent</h3>
             <div className="space-y-2">
               {endedPolls.map((poll) => (
-                <div key={poll.id} className="bg-neutral-800/30 border border-neutral-800 rounded-lg p-3">
-                  <p className="text-sm text-neutral-400 truncate">{poll.question}</p>
-                  <p className="text-xs text-neutral-600 mt-1">{poll.totalVotes} votes • Ended</p>
+                <div key={poll.id} className="rounded-lg border border-border p-3">
+                  <p className="text-sm text-muted-foreground truncate">{poll.question}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{poll.totalVotes} votes • Ended</p>
                 </div>
               ))}
             </div>
@@ -208,18 +202,12 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
         )}
 
         {polls.length === 0 && !isCreating && (
-          <div className="text-center py-8 text-neutral-600">
+          <div className="text-center py-8 text-muted-foreground">
             <p className="text-sm">No polls yet</p>
-            <p className="text-xs mt-1">Create one to engage your audience!</p>
+            <p className="text-xs mt-1">Create one to engage your audience</p>
           </div>
         )}
       </div>
-
-      <style>{`
-        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
-        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
-      `}</style>
     </div>
   );
 }
