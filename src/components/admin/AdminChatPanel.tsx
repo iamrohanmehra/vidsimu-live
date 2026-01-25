@@ -10,6 +10,7 @@ interface AdminChatPanelProps {
   onSendBroadcast: (text: string) => Promise<void>;
   onPinMessage: (messageId: string) => Promise<void>;
   onUnpinMessage: (messageId: string) => Promise<void>;
+  onDeleteMessage: (messageId: string) => Promise<void>;
   onClearChat: () => Promise<void>;
   isSending: boolean;
 }
@@ -27,6 +28,7 @@ export function AdminChatPanel({
   onSendBroadcast,
   onPinMessage,
   onUnpinMessage,
+  onDeleteMessage,
   onClearChat,
   isSending,
 }: AdminChatPanelProps) {
@@ -157,11 +159,12 @@ export function AdminChatPanel({
                     isAdmin ? 'bg-primary/10 border border-primary/20 text-foreground' :
                     'bg-muted text-foreground'
                   }`}>
-                    {msg.message}
+                    {renderMessageWithLinks(msg.message, isAdmin || isBroadcast)}
                     
                     {/* Hover Actions */}
                     <div className={`absolute top-1 ${isAdmin ? '-left-7' : '-right-7'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-0.5`}>
-                      {!msg.isPinned && (
+                      {/* Pin Button - Only for Broadcast messages that are unpinned */ }
+                      {!msg.isPinned && isBroadcast && (
                         <button 
                           onClick={() => onPinMessage(msg.id!)}
                           className="p-1 text-muted-foreground hover:text-amber-500 rounded"
@@ -170,6 +173,7 @@ export function AdminChatPanel({
                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
                         </button>
                       )}
+                      {/* Reply Button - Only for user messages */ }
                       {!isAdmin && !isBroadcast && (
                         <button
                           onClick={() => {
@@ -182,7 +186,18 @@ export function AdminChatPanel({
                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
                         </button>
                       )}
-                    </div>
+                          <button
+                            onClick={() => {
+                              if (window.confirm('Delete this message?')) {
+                                onDeleteMessage(msg.id!);
+                              }
+                            }}
+                            className="p-1 text-muted-foreground hover:text-destructive rounded"
+                            title="Delete"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                          </button>
+                        </div>
                   </div>
                 </div>
               </div>
@@ -240,4 +255,29 @@ export function AdminChatPanel({
       </div>
     </div>
   );
+}
+
+function renderMessageWithLinks(text: string, isClickable: boolean) {
+  if (!isClickable) return text;
+
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+
+  return parts.map((part, index) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a
+          key={index}
+          href={part}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-primary hover:underline break-all relative z-10"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
 }

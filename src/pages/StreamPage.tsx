@@ -14,7 +14,7 @@ import { CountdownScreen } from '@/components/CountdownScreen';
 import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { SessionEndedScreen } from '@/components/SessionEndedScreen';
 import { SessionLimitScreen } from '@/components/SessionLimitScreen';
-import type { Event, User, StreamState } from '@/types';
+import type { Event, User, StreamState, Message } from '@/types';
 
 export function StreamPage() {
   const { uuid } = useParams<{ uuid: string }>();
@@ -74,7 +74,12 @@ export function StreamPage() {
   // Combine messages for display
   const allMessages = useMemo(() => {
     const combined = [...userMessages, ...privateMessages];
-    return combined.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
+    // Deduplicate by ID
+    const uniqueMap = new Map();
+    combined.forEach(msg => {
+      if (msg.id) uniqueMap.set(msg.id, msg);
+    });
+    return Array.from(uniqueMap.values()).sort((a: Message, b: Message) => a.timestamp.getTime() - b.timestamp.getTime());
   }, [userMessages, privateMessages]);
 
   // Use optimistic video sync when transitioning to live (for late joiners)
@@ -149,7 +154,9 @@ export function StreamPage() {
   const handleEmailVerified = useCallback((verifiedUser: User) => {
     setUser(verifiedUser);
     setShowEmailModal(false);
-    setShowJoinModal(true);
+    // Skip Join Modal and Join Immediately on first verify
+    setHasJoined(true);
+    setMuted(false); // Enable audio since user just interacted with the verification modal
   }, []);
 
   // Handle join session

@@ -15,6 +15,7 @@ import {
   FieldGroup,
   FieldLabel,
 } from '@/components/ui/field';
+import { ModeToggle } from '@/components/mode-toggle';
 
 export function HomePage() {
   const [classId, setClassId] = useState('');
@@ -51,7 +52,10 @@ export function HomePage() {
   };
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6 md:p-10">
+    <div className="flex min-h-svh w-full items-center justify-center bg-background p-6 md:p-10 relative">
+      <div className="absolute top-4 right-4 animate-in fade-in zoom-in duration-300">
+        <ModeToggle />
+      </div>
       <div className="w-full max-w-sm">
         <div className="flex flex-col gap-6">
           <Card>

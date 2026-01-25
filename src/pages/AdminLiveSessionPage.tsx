@@ -14,6 +14,7 @@ import {
   Timestamp,
   writeBatch,
   getDocs,
+  deleteDoc,
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { messagesCollection } from '@/lib/collections';
@@ -143,6 +144,13 @@ export function AdminLiveSessionPage() {
 
   const handleSendBroadcast = useCallback(async (text: string) => {
     if (!id || !text.trim()) return;
+
+    // Strict Limit: Only one broadcast allowed
+    if (pinnedMessages.length > 0) {
+      alert('Only one broadcast message can be pinned at a time.');
+      return;
+    }
+
     setIsSending(true);
     try {
       await addDoc(messagesCollection, {
@@ -163,6 +171,12 @@ export function AdminLiveSessionPage() {
   }, [id]);
 
   const handlePinMessage = useCallback(async (messageId: string) => {
+    // Strict Limit: Only one pinned message allowed
+    if (pinnedMessages.length > 0) {
+      alert('Only one message can be pinned at a time.');
+      return;
+    }
+
     try {
       const messageRef = doc(db, 'messages', messageId);
       await updateDoc(messageRef, { isPinned: true, pinnedAt: serverTimestamp(), pinnedBy: 'admin' });
@@ -174,6 +188,12 @@ export function AdminLiveSessionPage() {
       const messageRef = doc(db, 'messages', messageId);
       await updateDoc(messageRef, { isPinned: false, pinnedAt: null, pinnedBy: null });
     } catch (e) { console.error(e); }
+  }, []);
+
+  const handleDeleteMessage = useCallback(async (messageId: string) => {
+    try {
+      await deleteDoc(doc(db, 'messages', messageId));
+    } catch (e) { console.error('Error deleting message:', e); }
   }, []);
 
   const handleClearChat = useCallback(async () => {
@@ -413,12 +433,13 @@ export function AdminLiveSessionPage() {
               </div>
             ) : (
               // Scheduled / Unscheduled -> Countdown
-              <div className="transform scale-[0.6] origin-center h-full w-full flex items-center justify-center">
+              <div className="h-full w-full flex items-center justify-center">
                 {event.time ? (
                   <CountdownScreen 
                     event={event} 
                     targetTime={new Date(event.time).getTime()} 
                     onCountdownComplete={() => {}} 
+                    isEmbedded={true}
                   />
                 ) : (
                   <div className="text-muted-foreground">Not Scheduled</div>
@@ -436,6 +457,7 @@ export function AdminLiveSessionPage() {
               onSendBroadcast={handleSendBroadcast}
               onPinMessage={handlePinMessage}
               onUnpinMessage={handleUnpinMessage}
+              onDeleteMessage={handleDeleteMessage}
               onClearChat={handleClearChat}
               isSending={isSending}
             />

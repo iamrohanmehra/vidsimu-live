@@ -11,6 +11,11 @@ import {
 import { messagesCollection } from '@/lib/collections';
 import type { Message, User } from '@/types';
 
+import {
+  deleteDoc,
+  doc,
+} from 'firebase/firestore';
+
 interface UseChatOptions {
   streamId: string;
   user: User | null;
@@ -22,6 +27,7 @@ interface UseChatReturn {
   userMessages: Message[];
   privateMessages: Message[];
   sendMessage: (text: string) => Promise<void>;
+  deleteMessage: (messageId: string) => Promise<void>;
   isSending: boolean;
 }
 
@@ -39,7 +45,8 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
     // Use client-side filtering preventing index issues
     const q = query(
       messagesCollection,
-      where('streamId', '==', streamId)
+      where('streamId', '==', streamId),
+      where('messageType', 'in', ['public', 'broadcast'])
     );
 
     const unsubscribe: Unsubscribe = onSnapshot(q, (snapshot) => {
@@ -59,10 +66,12 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
         // 4. Hide other users' messages (Restricted Chat)
         
         const isBroadcast = msg.messageType === 'broadcast';
-        const isAdmin = msg.isAdminMessage;
+        // Only show Admin messages if they are NOT private (private ones handled by 2nd listener)
+        const isAdminPublic = msg.isAdminMessage && msg.messageType !== 'private';
         const isOwnMessage = msg.email === user.email;
 
-        if (isBroadcast || isAdmin || isOwnMessage) {
+        // Add to list if it meets criteria
+        if (isBroadcast || isAdminPublic || isOwnMessage) {
           messages.push(msg);
         }
       });
@@ -136,10 +145,20 @@ export function useChat({ streamId, user, clientId, enabled = true }: UseChatOpt
     [streamId, user, clientId]
   );
 
+  const deleteMessage = useCallback(async (messageId: string) => {
+    try {
+      await deleteDoc(doc(messagesCollection, messageId));
+    } catch (error) {
+      console.error('Error deleting message:', error);
+      throw error;
+    }
+  }, []);
+
   return {
     userMessages,
     privateMessages,
     sendMessage,
+    deleteMessage,
     isSending,
   };
 }
