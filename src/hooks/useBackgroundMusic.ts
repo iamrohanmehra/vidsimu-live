@@ -250,7 +250,7 @@ export function useBackgroundMusic({ enabled, sessionStartTime, onEnded }: UseBa
         console.log(`[Music] ✅ Loaded ${tracks.length} tracks from metadata`);
         trackOrderRef.current = getTrackOrder(tracks, sessionStartTime);
         setTracksLoaded(true);
-      } catch (error) {
+      } catch {
         console.warn('[Music] ⚠️ Failed to fetch tracks.json (CORS or network issue)');
         console.log('[Music] Using fallback: assuming 3min per track');
         

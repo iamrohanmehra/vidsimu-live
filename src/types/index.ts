@@ -64,7 +64,7 @@ export interface SessionPointer {
 }
 
 // Stream states
-export type StreamState = 'loading' | 'countdown' | 'connecting' | 'live' | 'ended' | 'error';
+export type StreamState = 'loading' | 'countdown' | 'connecting' | 'live' | 'ended' | 'error' | 'unavailable';
 
 // Stored user in localStorage
 export interface StoredUser {

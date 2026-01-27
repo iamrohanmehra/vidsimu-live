@@ -14,6 +14,7 @@ import { CountdownScreen } from '@/components/CountdownScreen';
 import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { SessionEndedScreen } from '@/components/SessionEndedScreen';
 import { SessionLimitScreen } from '@/components/SessionLimitScreen';
+import { SessionNotScheduledScreen } from '@/components/SessionNotScheduledScreen';
 import type { Event, User, StreamState, Message } from '@/types';
 
 export function StreamPage() {
@@ -22,8 +23,8 @@ export function StreamPage() {
   // Core state
   const [event, setEvent] = useState<Event | null>(null);
   const [user, setUser] = useState<User | null>(null);
-  const [streamState, setStreamState] = useState<StreamState>('loading');
-  const [error, setError] = useState<string | null>(null);
+  const [streamState, setStreamState] = useState<StreamState>(!uuid ? 'error' : 'loading');
+  const [error, setError] = useState<string | null>(!uuid ? 'Invalid stream ID' : null);
   
   // UI state
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -37,7 +38,7 @@ export function StreamPage() {
   const streamStartTime = useMemo(() => {
     if (!event?.time) return 0;
     return new Date(event.time).getTime();
-  }, [event?.time]);
+  }, [event]);
 
   // Calculate effective stream start (after connecting delay)
   const connectingDelay = event?.connectingDelay ?? 30; // Default 30 seconds
@@ -92,8 +93,6 @@ export function StreamPage() {
   // Load event data
   useEffect(() => {
     if (!uuid) {
-      setError('Invalid stream ID');
-      setStreamState('error');
       return;
     }
 
@@ -107,14 +106,13 @@ export function StreamPage() {
           return;
         }
 
+        setEvent(eventData);
+
         // Check if stream URLs exist
         if (!eventData.url && !eventData.screenUrl) {
-          setError('Stream not available');
-          setStreamState('error');
+          setStreamState('unavailable');
           return;
         }
-
-        setEvent(eventData);
 
         // Determine initial stream state based on time
         const now = Date.now();
@@ -122,10 +120,15 @@ export function StreamPage() {
         const delay = eventData.connectingDelay ?? 30;
         const effectiveStart = startTime + (delay * 1000);
 
+        const durationMinutes = eventData.duration ?? 60;
+        const endTime = effectiveStart + (durationMinutes * 60 * 1000);
+
         if (now < startTime) {
           setStreamState('countdown');
         } else if (now < effectiveStart) {
           setStreamState('connecting');
+        } else if (now > endTime) {
+          setStreamState('ended');
         } else {
           // Late joiner - show sync overlay during live state
           setStreamState('live');
@@ -199,11 +202,8 @@ export function StreamPage() {
   // Loading state
   if (streamState === 'loading' || !event) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-violet-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white/80">Loading stream...</p>
-        </div>
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     );
   }
@@ -257,9 +257,14 @@ export function StreamPage() {
     );
   }
 
+  // Unavailable state
+  if (streamState === 'unavailable' && event) {
+    return <SessionNotScheduledScreen />;
+  }
+
   // Ended state
   if (streamState === 'ended') {
-    return <SessionEndedScreen event={event} />;
+    return <SessionEndedScreen event={event!} />;
   }
 
   // Connecting state
@@ -294,8 +299,13 @@ export function StreamPage() {
         visitorId={clientId}
       />
 
+      {/* Black Curtain - Hides the stream while user is verifying/joining */}
+      {!hasJoined && (
+        <div className="fixed inset-0 bg-black z-40 transition-opacity duration-500" />
+      )}
+
       {/* Sync overlay - shown while videos are loading and syncing */}
-      {showSyncOverlay && (
+      {showSyncOverlay && hasJoined && (
         <ConnectingScreen
           event={event}
           effectiveStreamStart={effectiveStreamStart}

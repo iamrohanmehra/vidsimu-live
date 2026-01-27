@@ -1,104 +1,108 @@
-import { Link } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ArrowLeft, Mail, HelpCircle } from 'lucide-react';
+
+const FAQS = [
+  {
+    question: "Video is not playing",
+    answer: "Make sure you have a stable internet connection. Try refreshing the page. If the issue persists, try using a different browser like Chrome or Firefox. Also ensure that JavaScript is enabled.",
+  },
+  {
+    question: "I can't hear any audio",
+    answer: "Click the 'Join Audio' button that might appear. Check your device volume and ensure the tab isn't muted. Verify browser permissions for audio playback.",
+  },
+  {
+    question: "Video buffering or lagging",
+    answer: "This is usually network-related. Close other bandwidth-heavy apps/tabs. If on WiFi, try moving closer to the router or switching to a wired connection.",
+  },
+  {
+    question: "'Device limit reached' error",
+    answer: "You can only watch on one device at a time. Close the stream on other devices/tabs. Wait a minute and refresh if you're sure it's closed elsewhere.",
+  },
+  {
+    question: "Email not recognized",
+    answer: "Use the exact email registered with Codekaro. Check for typos. If issues persist, please contact support for account verification.",
+  },
+  {
+    question: "Timer is stuck",
+    answer: "The page should auto-refresh when the session starts. If the countdown reaches zero with no change, manually refresh the page.",
+  },
+  {
+    question: "Chat messages not sending",
+    answer: "Check internet connection. Refresh the page. accurate character limits apply (500 chars).",
+  },
+  {
+    question: "Joining late?",
+    answer: "Sessions are live synced. You will join at the current moment in the stream. Replays may be available after the session ends.",
+  },
+];
 
 export function HelpPage() {
+  const navigate = useNavigate();
+
   return (
-    <div className="min-h-screen bg-linear-to-br from-neutral-950 via-neutral-900 to-neutral-950">
+    <div className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950 font-sans text-foreground">
       {/* Header */}
-      <header className="border-b border-neutral-800">
-        <div className="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 text-white hover:text-violet-400 transition-colors">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-            </svg>
-            Back to Home
-          </Link>
-          <h1 className="text-white font-semibold">Help Center</h1>
+      <header className="border-b border-border bg-background/80 backdrop-blur-xl sticky top-0 z-10 supports-backdrop-filter:bg-background/60">
+        <div className="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => navigate('/')} 
+            className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Button>
+          <span className="font-medium text-sm text-foreground/80">Help Center</span>
         </div>
       </header>
-
-      {/* Content */}
-      <main className="max-w-4xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-white mb-4">Need Help?</h1>
-          <p className="text-xl text-neutral-400">Find answers to common questions below</p>
+      
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[120px] pointer-events-none -z-10" />
+      
+      <main className="max-w-4xl mx-auto px-4 py-12 relative">
+        <div className="mb-12 text-center max-w-2xl mx-auto">
+             <h1 className="text-3xl md:text-4xl font-bold tracking-tight mb-4 bg-linear-to-b from-foreground to-foreground/60 bg-clip-text text-transparent">How can we help?</h1>
+             <p className="text-muted-foreground text-lg">Browse common questions below or contact our support team for direct assistance.</p>
         </div>
 
-        <div className="space-y-6">
-          <FAQItem
-            question="Video is not playing"
-            answer="Make sure you have a stable internet connection. Try refreshing the page. If the issue persists, try using a different browser like Chrome or Firefox. Also ensure that JavaScript is enabled in your browser settings."
-          />
-
-          <FAQItem
-            question="I can't hear any audio"
-            answer="Click the 'Join Audio' button that appears over the video. If you still can't hear audio, check that your device volume is turned up and not muted. Also verify that your browser has permission to play audio."
-          />
-
-          <FAQItem
-            question="The video is buffering or lagging"
-            answer="This is usually due to a slow internet connection. Try lowering other bandwidth usage on your network. Close other tabs and applications that might be using your internet. If possible, switch to a wired connection instead of WiFi."
-          />
-
-          <FAQItem
-            question="I'm seeing 'Device limit reached' error"
-            answer="You can only watch the stream on one device at a time. Make sure you've closed the stream on any other devices or browser tabs. If you're sure you don't have it open elsewhere, wait a minute and try refreshing the page."
-          />
-
-          <FAQItem
-            question="My email is not being recognized"
-            answer="Make sure you're using the same email address you registered with at Codekaro. Double-check for typos. If you're still having issues, contact support at support@codekaro.in."
-          />
-
-          <FAQItem
-            question="The countdown timer is stuck"
-            answer="The page should automatically refresh when the session starts. If the countdown reaches zero but nothing happens, try refreshing the page manually."
-          />
-
-          <FAQItem
-            question="Chat messages are not sending"
-            answer="Check your internet connection. If messages still aren't sending, try refreshing the page. There's a 500 character limit per message."
-          />
-
-          <FAQItem
-            question="I joined late, can I watch from the beginning?"
-            answer="Live sessions are meant to be watched in real-time. When you join, you'll be synced to the current point in the stream. Replays may be available after the session ends."
-          />
+        <div className="grid gap-4 md:grid-cols-2">
+             {FAQS.map((faq, i) => (
+               <Card key={i} className="shadow-sm border-border/60 hover:border-border transition-colors bg-card/50 backdrop-blur-sm">
+                 <CardHeader className="pb-3">
+                   <CardTitle className="text-base font-semibold flex items-start gap-2.5">
+                     <HelpCircle className="w-5 h-5 text-primary/80 shrink-0 mt-0.5" />
+                     <span className="leading-tight">{faq.question}</span>
+                   </CardTitle>
+                 </CardHeader>
+                 <CardContent className="text-sm text-muted-foreground leading-relaxed">
+                   {faq.answer}
+                 </CardContent>
+               </Card>
+             ))}
         </div>
 
-        {/* Contact section */}
-        <div className="mt-12 p-6 bg-neutral-800/50 rounded-2xl border border-neutral-700 text-center">
-          <h2 className="text-xl font-bold text-white mb-2">Still need help?</h2>
-          <p className="text-neutral-400 mb-4">Contact our support team</p>
-          <a
-            href="mailto:support@codekaro.in"
-            className="inline-flex items-center gap-2 text-violet-400 hover:text-violet-300"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-            </svg>
-            support@codekaro.in
-          </a>
+        {/* Contact Support */}
+        <div className="mt-12">
+           <Card className="border-border shadow-sm bg-primary/5">
+              <CardContent className="flex flex-col md:flex-row items-center justify-between p-8 gap-6">
+                 <div className="text-center md:text-left">
+                    <h3 className="text-xl font-bold mb-2 text-foreground">Still need assistance?</h3>
+                    <p className="text-muted-foreground">Our support team is standing by to help you with any technical issues.</p>
+                 </div>
+                 <Button size="lg" className="gap-2 shadow-md shrink-0" onClick={() => window.location.href = 'mailto:support@codekaro.in'}>
+                    <Mail className="w-4 h-4" />
+                    Contact Support
+                 </Button>
+              </CardContent>
+           </Card>
         </div>
+
+        <footer className="mt-16 text-center text-xs text-muted-foreground">
+          <p>© {new Date().getFullYear()} Codekaro. All rights reserved.</p>
+        </footer>
       </main>
-    </div>
-  );
-}
-
-interface FAQItemProps {
-  question: string;
-  answer: string;
-}
-
-function FAQItem({ question, answer }: FAQItemProps) {
-  return (
-    <div className="p-6 bg-neutral-800/30 rounded-xl border border-neutral-800">
-      <h3 className="text-lg font-semibold text-white mb-2 flex items-start gap-2">
-        <svg className="w-5 h-5 text-violet-400 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        {question}
-      </h3>
-      <p className="text-neutral-400 pl-7">{answer}</p>
     </div>
   );
 }

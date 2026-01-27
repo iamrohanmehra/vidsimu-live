@@ -27,12 +27,18 @@ export function useOptimisticVideoSync({
   videoUrl,
   enabled = true,
 }: UseOptimisticVideoSyncOptions): OptimisticSyncState {
-  const [state, setState] = useState<OptimisticSyncState>({
-    estimatedTime: 0,
-    accurateTime: null,
-    syncConfidence: 'low',
-    isReady: false,
-    drift: 0,
+  const [state, setState] = useState<OptimisticSyncState>(() => {
+    const now = Date.now();
+    const elapsed = streamStartTime ? (now - streamStartTime) / 1000 : 0;
+    const estimatedTime = Math.max(0, elapsed);
+    
+    return {
+      estimatedTime,
+      accurateTime: null,
+      syncConfidence: estimatedTime > 0 ? 'medium' : 'low',
+      isReady: false,
+      drift: 0,
+    };
   });
 
   const hlsRef = useRef<Hls | null>(null);
@@ -52,17 +58,9 @@ export function useOptimisticVideoSync({
       return;
     }
 
-    // Immediately calculate and set estimated time
-    const estimatedTime = calculateEstimatedTime();
-    setState(prev => ({
-      ...prev,
-      estimatedTime,
-      syncConfidence: 'medium', // We have an estimate
-    }));
+    // Initial estimate is now handled in useState initializer
 
-    if (import.meta.env.DEV) {
-      console.log('[OptimisticSync] Estimated position:', estimatedTime.toFixed(2) + 's');
-    }
+      console.log('[OptimisticSync] Estimated position:', state.estimatedTime.toFixed(2) + 's');
 
     // Now fetch accurate duration in background
     const video = document.createElement('video');
@@ -87,7 +85,7 @@ export function useOptimisticVideoSync({
       }
 
       // Calculate drift between estimate and accurate
-      const drift = Math.abs(currentEstimatedTime - estimatedTime);
+      const drift = Math.abs(currentEstimatedTime - duration);
       
       // High confidence if drift is minimal (< 500ms)
       const confidence: SyncConfidence = drift < 0.5 ? 'high' : 'medium';
@@ -171,6 +169,7 @@ export function useOptimisticVideoSync({
         videoRef.current = null;
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [enabled, videoUrl, streamStartTime, calculateEstimatedTime]);
 
   // Update estimated time periodically (every second) to keep it current

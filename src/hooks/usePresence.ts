@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { set, onDisconnect, serverTimestamp, onValue, remove } from 'firebase/database';
 import { presenceRef, streamPresenceRef } from '@/lib/collections';
 import { v4 as uuidv4 } from 'uuid';
@@ -16,19 +16,13 @@ interface UsePresenceReturn {
 }
 
 export function usePresence({ streamId, user, enabled = true }: UsePresenceOptions): UsePresenceReturn {
-  const clientIdRef = useRef<string>(uuidv4());
-  const viewerCountRef = useRef<number>(0);
-  const countCallbackRef = useRef<(count: number) => void>(() => {});
-
-  // Force re-render when count changes
-  const forceUpdate = useCallback(() => {
-    countCallbackRef.current(viewerCountRef.current);
-  }, []);
+  const [clientId] = useState(() => uuidv4());
+  const [viewerCount, setViewerCount] = useState(0);
 
   useEffect(() => {
     if (!enabled || !user || !streamId) return;
 
-    const clientId = clientIdRef.current;
+
     const presenceRefPath = presenceRef(streamId, clientId);
     const streamRefPath = streamPresenceRef(streamId);
 
@@ -53,8 +47,8 @@ export function usePresence({ streamId, user, enabled = true }: UsePresenceOptio
     const unsubscribe = onValue(streamRefPath, (snapshot) => {
       const data = snapshot.val();
       const count = data ? Object.keys(data).length : 0;
-      viewerCountRef.current = count;
-      forceUpdate();
+
+      setViewerCount(count);
     });
 
     // Cleanup on unmount
@@ -62,10 +56,10 @@ export function usePresence({ streamId, user, enabled = true }: UsePresenceOptio
       unsubscribe();
       remove(presenceRefPath);
     };
-  }, [streamId, user, enabled, forceUpdate]);
+  }, [streamId, user, enabled, clientId]);
 
   return {
-    clientId: clientIdRef.current,
-    viewerCount: viewerCountRef.current,
+    clientId,
+    viewerCount,
   };
 }

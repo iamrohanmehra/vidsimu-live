@@ -42,7 +42,7 @@ export function HomePage() {
         return;
       }
 
-      navigate(`/stream/${classId.trim()}`);
+      navigate(`/s/${classId.trim()}`);
     } catch (err) {
       console.error('Error fetching batch:', err);
       setError('Something went wrong. Please try again.');

@@ -20,7 +20,8 @@ export function ConnectingScreen({
   isOverlay = false,
 }: ConnectingScreenProps) {
   const hasTransitionedRef = useRef(false);
-  const mountTimeRef = useRef(Date.now());
+  const [mountTime] = useState(() => Date.now());
+  const mountTimeRef = useRef(mountTime);
   const [canTransition, setCanTransition] = useState(false);
 
   // Get instructor name - default to "Ashish Shukla"

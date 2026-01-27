@@ -119,14 +119,14 @@ export function AdminLiveSessionPage() {
     if (!id || !text.trim()) return;
     setIsSending(true);
     try {
-      const messageData: any = {
+      const messageData: Omit<Message, 'id'> = {
         streamId: id,
         userId: 'admin',
         name: 'Host',
         email: import.meta.env.VITE_ADMIN_EMAIL || 'admin@codekaro.in',
         avatar: '',
         message: text.trim(),
-        timestamp: serverTimestamp(),
+        timestamp: serverTimestamp() as unknown as Date, // FireStore timestamp casting
         messageType: 'public',
         isAdminMessage: isAdmin,
       };
@@ -168,7 +168,7 @@ export function AdminLiveSessionPage() {
         pinnedBy: 'admin',
       });
     } finally { setIsSending(false); }
-  }, [id]);
+  }, [id, pinnedMessages.length]);
 
   const handlePinMessage = useCallback(async (messageId: string) => {
     // Strict Limit: Only one pinned message allowed
@@ -181,7 +181,7 @@ export function AdminLiveSessionPage() {
       const messageRef = doc(db, 'messages', messageId);
       await updateDoc(messageRef, { isPinned: true, pinnedAt: serverTimestamp(), pinnedBy: 'admin' });
     } catch (e) { console.error(e); }
-  }, []);
+  }, [pinnedMessages.length]);
 
   const handleUnpinMessage = useCallback(async (messageId: string) => {
     try {

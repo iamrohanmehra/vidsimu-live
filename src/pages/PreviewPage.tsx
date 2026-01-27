@@ -8,14 +8,12 @@ export function PreviewPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   
   const [event, setEvent] = useState<Event | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(!!sessionId);
+  const [error, setError] = useState<string | null>(!sessionId ? 'Invalid session ID' : null);
 
   // Load event data
   useEffect(() => {
     if (!sessionId) {
-      setError('Invalid session ID');
-      setIsLoading(false);
       return;
     }
 

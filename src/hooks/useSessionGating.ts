@@ -18,14 +18,14 @@ interface UseSessionGatingReturn {
 const HEARTBEAT_INTERVAL = 30000; // 30 seconds
 
 export function useSessionGating({ eventId, user, enabled = true }: UseSessionGatingOptions): UseSessionGatingReturn {
-  const sessionIdRef = useRef<string>(uuidv4());
+  const [sessionId] = useState(() => uuidv4());
   const [isActiveSession, setIsActiveSession] = useState(true);
   const heartbeatRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const updateSession = useCallback(() => {
     if (!user || !eventId) return;
 
-    const sessionId = sessionIdRef.current;
+    // sessionId is stable from useState
     const sessionRefPath = sessionRef(eventId, sessionId);
 
     const sessionData: SessionData = {
@@ -41,12 +41,12 @@ export function useSessionGating({ eventId, user, enabled = true }: UseSessionGa
       createdAt: serverTimestamp(),
       lastSeen: serverTimestamp(),
     });
-  }, [eventId, user]);
+  }, [eventId, user, sessionId]);
 
   useEffect(() => {
     if (!enabled || !user || !eventId) return;
 
-    const sessionId = sessionIdRef.current;
+    // sessionId is stable from useState
     const encodedEmailKey = encodeEmail(user.email);
     const sessionRefPath = sessionRef(eventId, sessionId);
     const pointerRefPath = sessionPointerRef(eventId, encodedEmailKey);
@@ -100,10 +100,10 @@ export function useSessionGating({ eventId, user, enabled = true }: UseSessionGa
       }
       remove(sessionRefPath);
     };
-  }, [eventId, user, enabled, updateSession]);
+  }, [eventId, user, enabled, updateSession, sessionId]);
 
   return {
     isActiveSession,
-    sessionId: sessionIdRef.current,
+    sessionId,
   };
 }

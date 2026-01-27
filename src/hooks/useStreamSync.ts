@@ -11,8 +11,7 @@ interface UseStreamSyncOptions {
 
 interface UseStreamSyncReturn {
   syncNow: () => void;
-  currentDrift: number;
-  expectedTime: number;
+  getDebugStats: () => { currentDrift: number; expectedTime: number };
   isReady: boolean;
 }
 
@@ -239,8 +238,10 @@ export function useStreamSync({
 
   return {
     syncNow,
-    currentDrift: currentDriftRef.current,
-    expectedTime: expectedTimeRef.current,
+    getDebugStats: () => ({
+      currentDrift: currentDriftRef.current,
+      expectedTime: expectedTimeRef.current,
+    }),
     isReady,
   };
 }
