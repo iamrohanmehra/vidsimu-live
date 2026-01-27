@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useActivePoll } from '@/hooks/usePolls';
 
 interface PollVoteCardProps {
@@ -7,8 +7,15 @@ interface PollVoteCardProps {
 }
 
 export function PollVoteCard({ streamId, visitorId }: PollVoteCardProps) {
-  const { activePoll, hasVoted, isSubmitting, submitVote } = useActivePoll({ streamId, visitorId });
+  const { activePoll, hasVoted, userVote, isSubmitting, submitVote } = useActivePoll({ streamId, visitorId });
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
+
+  // Sync server-side vote record to local state (for persisted results on refresh)
+  useEffect(() => {
+    if (userVote && userVote.length > 0) {
+      setSelectedOptions(userVote);
+    }
+  }, [userVote]);
 
   if (!activePoll) return null;
 
@@ -47,58 +54,60 @@ export function PollVoteCard({ streamId, visitorId }: PollVoteCardProps) {
           const isSelected = selectedOptions.includes(opt.id);
           const pct = getPercentage(opt.id);
           
-          if (showResults) {
-             return (
-              <div key={opt.id} className="relative group">
-                <div className="flex items-center justify-between text-xs mb-1 z-10 relative">
-                  <span className="text-neutral-300">{opt.text}</span>
-                  <span className="text-neutral-500 font-mono">{pct}%</span>
-                </div>
-                <div className="h-1.5 w-full bg-neutral-900 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full transition-all duration-700 ease-out ${
-                      isSelected ? 'bg-white' : 'bg-neutral-700'
-                    }`}
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-              </div>
-            );
-          }
-
           return (
             <button
               key={opt.id}
-              onClick={() => handleSelect(opt.id)}
-              disabled={hasVoted || isSubmitting}
+              onClick={() => !showResults && handleSelect(opt.id)}
+              disabled={showResults || isSubmitting}
               className={`
-                w-full text-left p-3 rounded-lg border transition-all duration-200 
-                relative overflow-hidden group flex items-center justify-between
-                ${isSelected
-                  ? 'bg-neutral-800 border-neutral-600 text-white shadow-sm' 
-                  : 'bg-neutral-900/20 border-neutral-800 hover:bg-neutral-900 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
+                w-full text-left relative p-3 rounded-lg border transition-all duration-200 
+                overflow-hidden group flex items-center justify-between
+                ${showResults 
+                  ? 'border-neutral-800 cursor-default' 
+                  : isSelected
+                    ? 'bg-neutral-800 border-neutral-600 text-white shadow-sm' 
+                    : 'bg-neutral-900/20 border-neutral-800 hover:bg-neutral-900 hover:border-neutral-700 text-neutral-400 hover:text-neutral-200'
                 }
-                ${isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
+                ${!showResults && isSubmitting ? 'opacity-50 cursor-not-allowed' : ''}
               `}
             >
-              <span className="text-sm">
-                {opt.text}
-              </span>
-              
-              {/* Radio Button */}
-              <div className={`
-                w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-all ml-3
-                ${isSelected 
-                  ? 'border-white bg-white' 
-                  : 'border-neutral-600 group-hover:border-neutral-500 bg-transparent'
-                }
-              `}>
-                {isSelected && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+              {/* Progress Bar Background (only when showing results) */}
+              {showResults && (
+                <div 
+                  className={`absolute inset-y-0 left-0 bg-neutral-800 transition-all duration-700 ease-out ${isSelected ? 'opacity-100' : 'opacity-60'}`}
+                  style={{ width: `${pct}%` }}
+                />
+              )}
+
+              {/* Content */}
+              <div className="relative z-10 flex items-center justify-between w-full">
+                <span className={`text-sm ${showResults && isSelected ? 'text-white' : showResults ? 'text-neutral-300' : ''}`}>
+                  {opt.text}
+                </span>
+                
+                <div className="flex items-center">
+                  {showResults && (
+                      <span className="text-sm font-mono text-neutral-400 mr-3">{pct}%</span>
+                  )}
+
+                  {/* Radio Button / Status Indicator */}
+                  <div className={`
+                    w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 transition-all
+                    ${isSelected 
+                      ? 'border-white bg-white' 
+                      : showResults
+                          ? 'border-neutral-700 bg-transparent'
+                          : 'border-neutral-600 group-hover:border-neutral-500 bg-transparent'
+                    }
+                  `}>
+                    {isSelected && <div className="w-1.5 h-1.5 bg-black rounded-full" />}
+                  </div>
+                </div>
               </div>
 
               {/* Submit Spinner Overlay */}
-              {isSubmitting && isSelected && (
-                <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px]">
+              {isSubmitting && isSelected && !showResults && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/10 backdrop-blur-[1px] z-20">
                    <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 </div>
               )}

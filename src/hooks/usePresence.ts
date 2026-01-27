@@ -16,7 +16,24 @@ interface UsePresenceReturn {
 }
 
 export function usePresence({ streamId, user, enabled = true }: UsePresenceOptions): UsePresenceReturn {
-  const [clientId] = useState(() => uuidv4());
+  const [clientId] = useState(() => {
+    // Try to get stored client ID to persist identity across refreshes
+    try {
+      const stored = localStorage.getItem('vidsimu_client_id');
+      if (stored) return stored;
+    } catch (e) {
+      console.error('Error accessing localStorage:', e);
+    }
+    
+    // Generate new ID and store it
+    const newId = uuidv4();
+    try {
+      localStorage.setItem('vidsimu_client_id', newId);
+    } catch (e) {
+      console.error('Error saving to localStorage:', e);
+    }
+    return newId;
+  });
   const [viewerCount, setViewerCount] = useState(0);
 
   useEffect(() => {

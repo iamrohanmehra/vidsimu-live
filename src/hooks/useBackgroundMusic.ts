@@ -85,6 +85,7 @@ export function useBackgroundMusic({ enabled, sessionStartTime, onEnded }: UseBa
   const isMountedRef = useRef(true);
   const musicStartTimeRef = useRef<number>(0);
   const shouldBePlayingRef = useRef<boolean>(false); // Guard to prevent premature playback
+  const canPlayHandlerRef = useRef<(() => void) | null>(null);
 
   const baseUrl = import.meta.env.VITE_R2_MUSIC_URL || 'https://javascript.design/tracks';
 
@@ -134,12 +135,25 @@ export function useBackgroundMusic({ enabled, sessionStartTime, onEnded }: UseBa
     console.log(`[Music] Loading track ${track.id} (${track.duration}s), seek to ${seekTo.toFixed(1)}s`);
 
     const audio = audioRef.current;
+    
+    // Cleanup previous listener if exists
+    if (canPlayHandlerRef.current) {
+      audio.removeEventListener('canplay', canPlayHandlerRef.current);
+    }
+
     audio.src = trackUrl;
     audio.volume = 0;
 
     const handleCanPlay = () => {
+      // Cleanup self
+      audio.removeEventListener('canplay', handleCanPlay);
+      canPlayHandlerRef.current = null;
+
       if (!isMountedRef.current || !audioRef.current || !shouldBePlayingRef.current) return;
       
+      // Verify we are still on the same track index (prevents race conditions)
+      if (currentTrackIndexRef.current !== trackIndex) return;
+
       // Seek to position
       if (seekTo > 0 && seekTo < track.duration - 1) {
         audio.currentTime = seekTo;
@@ -154,13 +168,21 @@ export function useBackgroundMusic({ enabled, sessionStartTime, onEnded }: UseBa
           fadeVolume(audio, 0.3, FADE_DURATION_MS);
         })
         .catch((error) => {
+          // AbortError is common when we switch tracks quickly, ignore it
+          if (error.name === 'AbortError') return;
+          
           console.error('[Music] ❌ Autoplay failed:', error.message);
           setIsPlaying(false);
+          
+          // Try next track immediately on play error
+          if (shouldBePlayingRef.current) {
+            currentTrackIndexRef.current++;
+            playTrackAt(currentTrackIndexRef.current, 0);
+          }
         });
-
-      audio.removeEventListener('canplay', handleCanPlay);
     };
 
+    canPlayHandlerRef.current = handleCanPlay;
     audio.addEventListener('canplay', handleCanPlay);
     audio.load();
   }, [baseUrl, fadeVolume]);

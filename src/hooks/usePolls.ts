@@ -143,6 +143,7 @@ interface UseActivePollOptions {
 export function useActivePoll({ streamId, visitorId, enabled = true }: UseActivePollOptions) {
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
+  const [userVote, setUserVote] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -160,6 +161,7 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
       if (snapshot.empty) {
         setActivePoll(null);
         setHasVoted(false);
+        setUserVote([]);
       } else {
         const docSnap = snapshot.docs[0];
         const data = docSnap.data();
@@ -179,6 +181,7 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
   useEffect(() => {
     if (!activePoll?.id || !visitorId) {
       setHasVoted(false);
+      setUserVote([]);
       return;
     }
 
@@ -189,7 +192,15 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
-      setHasVoted(!snapshot.empty);
+      const alreadyVoted = !snapshot.empty;
+      setHasVoted(alreadyVoted);
+      
+      if (alreadyVoted) {
+        const voteData = snapshot.docs[0].data();
+        setUserVote(voteData.selectedOptions || []);
+      } else {
+        setUserVote([]);
+      }
     });
 
     return () => unsubscribe();
@@ -219,6 +230,7 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
 
       await updateDoc(doc(db, 'polls', activePoll.id), updates);
       setHasVoted(true);
+      setUserVote(selectedOptions);
     } finally {
       setIsSubmitting(false);
     }
@@ -227,6 +239,7 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
   return {
     activePoll,
     hasVoted,
+    userVote,
     isLoading,
     isSubmitting,
     submitVote,
