@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useActivePoll } from '@/hooks/usePolls';
 
 interface PollVoteCardProps {
@@ -10,12 +10,7 @@ export function PollVoteCard({ streamId, visitorId }: PollVoteCardProps) {
   const { activePoll, hasVoted, userVote, isSubmitting, submitVote } = useActivePoll({ streamId, visitorId });
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
-  // Sync server-side vote record to local state (for persisted results on refresh)
-  useEffect(() => {
-    if (userVote && userVote.length > 0) {
-      setSelectedOptions(userVote);
-    }
-  }, [userVote]);
+
 
   if (!activePoll) return null;
 
@@ -51,7 +46,7 @@ export function PollVoteCard({ streamId, visitorId }: PollVoteCardProps) {
 
       <div className="space-y-2 mb-2">
         {activePoll.options.map((opt) => {
-          const isSelected = selectedOptions.includes(opt.id);
+          const isSelected = (hasVoted && userVote.length > 0 ? userVote : selectedOptions).includes(opt.id);
           const pct = getPercentage(opt.id);
           
           return (
