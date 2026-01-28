@@ -113,3 +113,73 @@ export interface PollVote {
   selectedOptions: string[];
   votedAt: Date;
 }
+
+// ============================================
+// Session Export Types
+// ============================================
+
+// Exported message format
+export interface MessageExport {
+  id: string;
+  senderName: string;
+  senderEmail: string;
+  text: string;
+  timestamp: string; // ISO string
+  isAdminMessage: boolean;
+  messageType: 'public' | 'private' | 'broadcast';
+  // For admin replies
+  replyToMessageId?: string;
+  replyToUserName?: string;
+}
+
+// Exported user/participant
+export interface ParticipantExport {
+  name: string;
+  email: string;
+  joinedAt: string; // ISO string
+  messageCount: number;
+}
+
+// Exported poll with full details
+export interface PollExport {
+  id: string;
+  question: string;
+  options: { id: string; text: string }[];
+  type: 'single' | 'multiple';
+  status: 'draft' | 'active' | 'ended';
+  createdAt: string;
+  launchedAt?: string;
+  endedAt?: string;
+  totalVotes: number;
+  voteCounts: Record<string, number>;
+  votes: {
+    visitorId: string;
+    email?: string;
+    selectedOptions: string[];
+    votedAt: string;
+  }[];
+}
+
+// Full session export structure
+export interface SessionExport {
+  version: '1.0';
+  exportedAt: string; // ISO string
+  exportName: string;
+  session: {
+    id: string;
+    title: string;
+    topic?: string;
+    scheduledTime: string;
+    duration?: number; // minutes
+    instructor?: string;
+  };
+  stats: {
+    totalMessages: number;
+    uniqueParticipants: number;
+    pollCount: number;
+    peakViewers?: number;
+  };
+  participants: ParticipantExport[];
+  messages: MessageExport[];
+  polls: PollExport[];
+}

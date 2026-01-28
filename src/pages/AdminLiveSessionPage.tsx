@@ -21,6 +21,8 @@ import { messagesCollection } from '@/lib/collections';
 import { AdminChatPanel } from '@/components/admin/AdminChatPanel';
 import { AdminViewersList } from '@/components/admin/AdminViewersList';
 import { AdminPollManager } from '@/components/admin/AdminPollManager';
+import { ExportSessionModal } from '@/components/admin/ExportSessionModal';
+import { useSessionExport } from '@/hooks/useSessionExport';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
@@ -43,10 +45,17 @@ export function AdminLiveSessionPage() {
     }
     return true;
   });
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   const { viewerCount, viewers } = useCurrentViewers({
     streamId: id || '',
     enabled: !!id,
+  });
+
+  const { exportSession, isExporting } = useSessionExport({
+    streamId: id || '',
+    event,
+    viewers,
   });
 
   // Theme toggle
@@ -102,7 +111,8 @@ export function AdminLiveSessionPage() {
         } as Message;
         
         if (msg.isPinned) pinned.push(msg);
-        if (['public', 'broadcast'].includes(msg.messageType)) msgs.push(msg);
+        // Include public, broadcast, and private messages (admin replies)
+        if (['public', 'broadcast', 'private'].includes(msg.messageType)) msgs.push(msg);
       });
 
       msgs.sort((a, b) => a.timestamp.getTime() - b.timestamp.getTime());
@@ -357,6 +367,21 @@ export function AdminLiveSessionPage() {
                 Preview
               </Button>
 
+              {/* Export Session Data Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsExportModalOpen(true)}
+                disabled={streamStatus.status !== 'ended'}
+                className="gap-2"
+                title={streamStatus.status !== 'ended' ? 'Available after session ends' : 'Export session data'}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                </svg>
+                Export Session Data
+              </Button>
+
               {/* Theme Toggle */}
               <Button
                 variant="outline"
@@ -492,6 +517,15 @@ export function AdminLiveSessionPage() {
           </aside>
         </div>
       </div>
+
+      {/* Export Session Modal */}
+      <ExportSessionModal
+        isOpen={isExportModalOpen}
+        onClose={() => setIsExportModalOpen(false)}
+        onExport={exportSession}
+        isExporting={isExporting}
+        defaultTitle={event?.title || ''}
+      />
     </div>
   );
 }

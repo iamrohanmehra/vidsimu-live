@@ -17,6 +17,7 @@ function App() {
         <Route path="/preview/:sessionId" element={<PreviewPage />} />
         {/* Admin routes */}
         <Route path="/a/:id" element={<AdminLiveSessionPage />} />
+        <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/a/:id/analytics" element={<AnalyticsPage />} />
         <Route path="/admin/events/:id/analytics" element={<AnalyticsPage />} />
         {/* 404 fallback */}
