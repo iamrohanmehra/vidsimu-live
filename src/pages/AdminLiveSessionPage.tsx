@@ -28,6 +28,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { CountdownScreen } from '@/components/CountdownScreen';
+import { Volume2, VolumeX, ExternalLink, Download, Sun, Moon, Radio, Copy, Check } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 import type { Event, Message } from '@/types';
 
 export function AdminLiveSessionPage() {
@@ -46,6 +53,7 @@ export function AdminLiveSessionPage() {
     return true;
   });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
 
   const { viewerCount, viewers } = useCurrentViewers({
     streamId: id || '',
@@ -122,6 +130,13 @@ export function AdminLiveSessionPage() {
     }, (error) => {
       console.error('Error fetching admin messages:', error);
     });
+  }, [id]);
+
+  const handleCopyId = useCallback(() => {
+    if (!id) return;
+    navigator.clipboard.writeText(id);
+    setIsCopied(true);
+    setTimeout(() => setIsCopied(false), 2000);
   }, [id]);
 
   // Action Handlers
@@ -279,202 +294,212 @@ export function AdminLiveSessionPage() {
   const streamStatus = getStreamStatus();
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Main Layout */}
-      <div className="h-screen flex flex-col">
-        {/* Header */}
-        <header className="border-b border-border px-6 py-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-xl font-semibold">{event.title}</h1>
-                {streamStatus.status === 'live' && (
-                  <span className="px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-destructive"></span>
-                    Live
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                Command Center • {id}
-                {event.topic && ` • ${event.topic}`}
-              </p>
-            </div>
-            
-            <div className="flex items-center gap-6">
-              {/* Metrics */}
-              <div className="flex items-center gap-6">
-                <div className="text-right">
-                  <p className="text-2xl font-bold tabular-nums">{viewerCount}</p>
-                  <p className="text-xs text-muted-foreground">Watching</p>
+    <TooltipProvider>
+      <div className="min-h-screen bg-background text-foreground">
+        {/* Main Layout (Sidebars + Main Content) */}
+        <div className="h-screen flex overflow-hidden">
+          
+          {/* Main Content Area (Header + Video) */}
+          <div className="flex-1 flex flex-col min-w-0 h-full">
+            {/* Header */}
+            <header className="border-b border-border px-6 py-3 shrink-0">
+              <div className="flex items-center justify-between">
+                {/* Left Side: Title & Info */}
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-lg font-semibold whitespace-nowrap">
+                      {event.title} {event.topic && `| ${event.topic}`}
+                      <span className="mx-2 text-muted-foreground font-normal">|</span>
+                      <span className="font-mono text-sm bg-muted/50 px-2 py-0.5 rounded inline-flex items-center gap-2 group">
+                        {id}
+                        <button 
+                          onClick={handleCopyId}
+                          className="hover:text-primary transition-colors focus:outline-none"
+                          title="Copy Session ID"
+                        >
+                          {isCopied ? (
+                            <Check className="w-3.5 h-3.5 text-green-500" />
+                          ) : (
+                            <Copy className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
+                          )}
+                        </button>
+                      </span>
+                    </h1>
+                    {streamStatus.status === 'live' && (
+                      <span className="px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5" id="live-indicator">
+                        <Radio className="w-3 h-3" />
+                        Live
+                      </span>
+                    )}
+                  </div>
                 </div>
-                
-                <Separator orientation="vertical" className="h-10" />
-                
-                <div className="text-right min-w-[140px]">
-                  {streamStatus.status === 'unscheduled' && (
-                    <p className="text-sm text-muted-foreground">Not scheduled</p>
-                  )}
-                  {streamStatus.status === 'scheduled' && (
-                    <div>
-                      <p className="text-lg font-mono text-amber-500">
-                        {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Scheduled</p>
+
+                {/* Right Side: Metrics & Actions */}
+                <div className="flex items-center gap-6">
+                  {/* Metrics */}
+                  <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                      <p className="text-xl font-bold tabular-nums" id="viewer-count">{viewerCount}</p>
                     </div>
-                  )}
-                  {streamStatus.status === 'ended' && (
-                    <p className="text-sm font-medium text-destructive">Ended</p>
-                  )}
-                  {streamStatus.status === 'live' && (
-                    <div>
-                      <p className="text-lg font-mono tabular-nums">
-                        {formatTime(streamStatus.elapsed)} <span className="text-muted-foreground">/</span> {formatTime(streamStatus.duration)}
-                      </p>
-                      <p className="text-xs text-muted-foreground">Duration</p>
+                    
+                    <Separator orientation="vertical" className="h-8" />
+                    
+                    <div className="text-left min-w-[120px]">
+                      {streamStatus.status === 'unscheduled' && (
+                        <p className="text-sm text-muted-foreground">Not scheduled</p>
+                      )}
+                      {streamStatus.status === 'scheduled' && (
+                        <div>
+                          <p className="text-lg font-mono text-amber-500">
+                            {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Scheduled</p>
+                        </div>
+                      )}
+                      {streamStatus.status === 'ended' && (
+                        <p className="text-sm font-medium text-destructive">Ended</p>
+                      )}
+                      {streamStatus.status === 'live' && (
+                        <div>
+                          <p className="text-lg font-mono tabular-nums">
+                            {formatTime(streamStatus.elapsed)} <span className="text-muted-foreground">/</span> {formatTime(streamStatus.duration)}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Duration</p>
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
+
+                  <Separator orientation="vertical" className="h-8" />
+
+                  {/* Header Actions */}
+                  <div className="flex items-center gap-2">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsPreviewMuted(!isPreviewMuted)}
+                          className="h-8 w-8"
+                          id="toggle-preview-mute"
+                        >
+                          {isPreviewMuted ? (
+                            <VolumeX className="h-4 w-4" />
+                          ) : (
+                            <Volume2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => window.open(`/preview/${id}`, '_blank')}
+                          className="h-8 w-8"
+                          id="open-preview"
+                        >
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>Open Public Preview</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={() => setIsExportModalOpen(true)}
+                          disabled={streamStatus.status !== 'ended'}
+                          className="h-8 w-8"
+                          id="open-export-modal"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{streamStatus.status !== 'ended' ? 'Export disabled until session ends' : 'Export Session Data'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={toggleTheme}
+                          className="h-8 w-8"
+                          id="toggle-theme"
+                        >
+                          {isDark ? (
+                            <Sun className="h-4 w-4" />
+                          ) : (
+                            <Moon className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{isDark ? 'Switch to light mode' : 'Switch to dark mode'}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               </div>
+            </header>
 
-              <Separator orientation="vertical" className="h-10" />
-
-              {/* Preview Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPreviewMuted(!isPreviewMuted)}
-                className="gap-2"
-              >
-                {isPreviewMuted ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" /></svg>
-                ) : (
-                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                )}
-                {isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}
-              </Button>
-
-              {/* Preview Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => window.open(`/preview/${id}`, '_blank')}
-                className="gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                </svg>
-                Preview
-              </Button>
-
-              {/* Export Session Data Button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsExportModalOpen(true)}
-                disabled={streamStatus.status !== 'ended'}
-                className="gap-2"
-                title={streamStatus.status !== 'ended' ? 'Available after session ends' : 'Export session data'}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                </svg>
-                Export Session Data
-              </Button>
-
-              {/* Theme Toggle */}
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={toggleTheme}
-                title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-              >
-                {isDark ? (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                  </svg>
-                ) : (
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                  </svg>
-                )}
-              </Button>
-            </div>
-          </div>
-        </header>
-
-        {/* Content */}
-        {/* Content */}
-        <div className="flex-1 flex overflow-hidden">
-          {/* Main Content Area - Video / Countdown */}
-          <div className="flex-1 bg-black relative overflow-hidden flex flex-col justify-center">
-            {streamStatus.status === 'live' ? (
-              <div className="relative w-full h-full">
-                {/* Main: Screen Share */}
-                <div className="absolute inset-0 z-0">
-                  <VideoPlayer
-                    url={event.screenUrl || event.url} // Fallback to main URL if no screen share
-                    muted={true} // Screen share audio usually muted or mixed in facecam
-                    onMuteChange={() => {}}
-                    isFaceVideo={false}
-                    objectFit="contain"
-                    streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
-                    className="w-full h-full"
-                  />
-                </div>
-
-                {/* Overlay: Face Cam (if screen share exists, otherwise main is facecam) */}
-                {event.screenUrl && (
-                  <div className="absolute bottom-4 right-4 z-10 w-48 md:w-64 aspect-video rounded-lg overflow-hidden shadow-2xl border border-white/10 bg-black">
+            {/* Content Area (Video) */}
+            <div className="flex-1 bg-black relative overflow-hidden flex flex-col justify-center">
+              {streamStatus.status === 'live' ? (
+                <div className="relative w-full h-full">
+                  {/* Main Video: Screen Share or Face Cam fallback */}
+                  <div className="absolute inset-0 z-0">
                     <VideoPlayer
-                      url={event.url}
-                      muted={isPreviewMuted}
-                      onMuteChange={setIsPreviewMuted}
-                      isFaceVideo={true}
-                      objectFit="cover"
+                      url={event.screenUrl || event.url} 
+                      muted={true} 
+                      onMuteChange={() => {}}
+                      isFaceVideo={false}
+                      objectFit="contain"
                       streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
                       className="w-full h-full"
                     />
                   </div>
-                )}
-                
-                {/* Audio control for main video if no screenshare (acts as facecam main) */}
-                {!event.screenUrl && (
-                   <div className="absolute top-4 right-4 z-20">
-                     {/* Mute control is in header, but we need to ensure audio plays from this player */}
-                     {/* Currently VideoPlayer prop 'muted' is hardcoded true above for screen share slot. 
-                         If we use main slot for facecam, we should pass isPreviewMuted there. 
-                         Let's refine logic below.
-                     */}
-                   </div>
-                )}
-              </div>
-            ) : streamStatus.status === 'ended' ? (
-              <div className="flex items-center justify-center h-full text-muted-foreground">
-                <div className="text-center">
-                  <h2 className="text-2xl font-bold text-foreground">Session Ended</h2>
-                  <p className="mt-2">Thank you for hosting!</p>
                 </div>
-              </div>
-            ) : (
-              // Scheduled / Unscheduled -> Countdown
-              <div className="h-full w-full flex items-center justify-center">
-                {event.time ? (
-                  <CountdownScreen 
-                    event={event} 
-                    targetTime={new Date(event.time).getTime()} 
-                    onCountdownComplete={() => {}} 
-                    isEmbedded={true}
-                  />
-                ) : (
-                  <div className="text-muted-foreground">Not Scheduled</div>
-                )}
-              </div>
-            )}
+              ) : streamStatus.status === 'ended' ? (
+                <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="text-center">
+                    <h2 className="text-2xl font-bold text-foreground">Session Ended</h2>
+                    <p className="mt-2">Thank you for hosting!</p>
+                  </div>
+                </div>
+              ) : (
+                // Scheduled / Unscheduled -> Countdown
+                <div className="h-full w-full flex items-center justify-center">
+                  {event.time ? (
+                    <CountdownScreen 
+                      event={event} 
+                      targetTime={new Date(event.time).getTime()} 
+                      onCountdownComplete={() => {}} 
+                      isEmbedded={true}
+                    />
+                  ) : (
+                    <div className="text-muted-foreground">Not Scheduled</div>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Chat Panel - Same width as sidebar */}
-          <aside className="w-[360px] border-l border-border flex flex-col">
+          {/* Sidebars (Full Height) */}
+          {/* Chat Panel */}
+          <aside className="w-[360px] border-l border-border flex flex-col h-full overflow-hidden shrink-0">
             <AdminChatPanel
               messages={messages}
               pinnedMessages={pinnedMessages}
@@ -488,10 +513,23 @@ export function AdminLiveSessionPage() {
             />
           </aside>
 
-          {/* Sidebar with Tabs */}
-          <aside className="w-[360px] border-l border-border flex flex-col">
-            <Tabs defaultValue="audience" className="flex-1 flex flex-col">
-              <div className="px-4 pt-3">
+          {/* Audience/Polls Sidebar */}
+          <aside className="w-[360px] border-l border-border flex flex-col h-full overflow-hidden shrink-0">
+            {/* Instructor Video at the top */}
+            <div className="w-full aspect-video border-b border-border bg-black shrink-0">
+              <VideoPlayer
+                url={event.url}
+                muted={isPreviewMuted}
+                onMuteChange={setIsPreviewMuted}
+                isFaceVideo={true}
+                objectFit="cover"
+                streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                className="w-full h-full"
+              />
+            </div>
+
+            <Tabs defaultValue="audience" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+              <div className="px-4 pt-3 shrink-0">
                 <TabsList className="grid w-full grid-cols-2">
                   <TabsTrigger value="audience">
                     Audience ({viewerCount})
@@ -502,13 +540,13 @@ export function AdminLiveSessionPage() {
                 </TabsList>
               </div>
               
-              <TabsContent value="audience" className="flex-1 m-0 overflow-hidden">
+              <TabsContent value="audience" className="flex-1 m-0 overflow-hidden min-h-0">
                 <div className="h-full">
                   <AdminViewersList viewers={viewers} viewerCount={viewerCount} />
                 </div>
               </TabsContent>
               
-              <TabsContent value="polls" className="flex-1 m-0 overflow-hidden">
+              <TabsContent value="polls" className="flex-1 m-0 overflow-hidden min-h-0">
                 <div className="h-full">
                   <AdminPollManager streamId={id || ''} />
                 </div>
@@ -516,16 +554,16 @@ export function AdminLiveSessionPage() {
             </Tabs>
           </aside>
         </div>
-      </div>
 
-      {/* Export Session Modal */}
-      <ExportSessionModal
-        isOpen={isExportModalOpen}
-        onClose={() => setIsExportModalOpen(false)}
-        onExport={exportSession}
-        isExporting={isExporting}
-        defaultTitle={event?.title || ''}
-      />
-    </div>
+        {/* Export Session Modal */}
+        <ExportSessionModal
+          isOpen={isExportModalOpen}
+          onClose={() => setIsExportModalOpen(false)}
+          onExport={exportSession}
+          isExporting={isExporting}
+          defaultTitle={event?.title || ''}
+        />
+      </div>
+    </TooltipProvider>
   );
 }

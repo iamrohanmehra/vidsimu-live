@@ -1,6 +1,29 @@
 import { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { 
+  MessageSquare, 
+  Trash2, 
+  Smile, 
+  Sparkles, 
+  Reply, 
+  Pin,
+  SendHorizontal,
+  MoreVertical,
+  BellRing,
+  X
+} from 'lucide-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Message } from '@/types';
 
 interface AdminChatPanelProps {
@@ -35,6 +58,8 @@ export function AdminChatPanel({
   const [inputText, setInputText] = useState('');
   const [isBroadcastMode, setIsBroadcastMode] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
+  const [isClearChatOpen, setIsClearChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll
@@ -64,30 +89,45 @@ export function AdminChatPanel({
 
   const getInitials = (name: string) => name?.charAt(0)?.toUpperCase() || '?';
 
+  const getAvatarColor = (name: string) => {
+    const themes = [
+      { bg: 'bg-zinc-800', text: 'text-blue-300', border: 'border-blue-500/20', ring: 'ring-blue-500/40', color: 'rgba(96,165,250,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-emerald-300', border: 'border-emerald-500/20', ring: 'ring-emerald-500/40', color: 'rgba(52,211,153,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-violet-300', border: 'border-violet-500/20', ring: 'ring-violet-500/40', color: 'rgba(167,139,250,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-rose-300', border: 'border-rose-500/20', ring: 'ring-rose-500/40', color: 'rgba(251,113,133,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-amber-300', border: 'border-amber-500/20', ring: 'ring-amber-500/40', color: 'rgba(251,191,36,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-cyan-300', border: 'border-cyan-500/20', ring: 'ring-cyan-500/40', color: 'rgba(34,211,238,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-indigo-300', border: 'border-indigo-500/20', ring: 'ring-indigo-500/40', color: 'rgba(129,140,248,0.7)' },
+    ];
+    const charCodeSum = (name || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return themes[charCodeSum % themes.length];
+  };
+
+  const isJoinMessage = (message: string) => {
+    return message.toLowerCase().endsWith(' joined') || 
+           message.toLowerCase().startsWith('joined ') ||
+           message.toLowerCase().includes(' has joined');
+  };
+
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-border flex justify-between items-center">
-        <div className="flex items-center gap-2">
-          <svg className="w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-          </svg>
-          <span className="font-medium text-foreground">Live Chat</span>
-          <span className="text-xs text-muted-foreground ml-2">{messages.length}</span>
+      <div className="px-5 py-3 border-b border-white/5 flex justify-between items-center bg-[#0a0a0a]/50 backdrop-blur-xl shrink-0">
+        <div className="flex items-center gap-2.5">
+          <MessageSquare className="w-5 h-5 text-white/80" />
+          <span className="font-semibold text-[15px] tracking-tight text-white/90">Chat</span>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            if (window.confirm('Clear all messages?')) {
-              onClearChat();
-            }
-          }}
-          className="text-muted-foreground hover:text-destructive h-8 w-8"
-          title="Clear Chat"
-        >
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsClearChatOpen(true)}
+            className="text-white/40 hover:text-destructive hover:bg-destructive/10 h-8 w-8 rounded-lg transition-colors"
+            title="Clear Chat"
+          >
+            <Trash2 className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Pinned Section */}
@@ -118,10 +158,10 @@ export function AdminChatPanel({
       )}
 
       {/* Messages List */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground">
-            <svg className="w-8 h-8 opacity-30 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+          <div className="h-full flex flex-col items-center justify-center text-white/20">
+            <MessageSquare className="w-10 h-10 opacity-20 mb-3" />
             <p className="text-sm">No messages yet</p>
           </div>
         ) : (
@@ -129,86 +169,119 @@ export function AdminChatPanel({
             const isAdmin = msg.isAdminMessage;
             const isBroadcast = msg.messageType === 'broadcast';
             
+            // Check for join messages
+            if (isJoinMessage(msg.message)) {
+              return (
+                <div key={msg.id} className="py-1 px-4 text-center">
+                  <span className="text-[10px] text-neutral-500 font-medium bg-neutral-800/50 px-3 py-1 rounded-full border border-neutral-700/50 inline-flex items-center gap-2">
+                    <Sparkles className="w-3 h-3 text-amber-500" />
+                    <span className="text-neutral-300 font-normal">{msg.name}</span> joined
+                  </span>
+                </div>
+              );
+            }
+
+            const theme = !isAdmin && !isBroadcast ? getAvatarColor(msg.name) : null;
+
             return (
               <div 
                 key={msg.id} 
-                className={`group flex gap-3 ${isAdmin || isBroadcast ? 'flex-row-reverse' : ''}`}
+                className="group relative flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 hover:bg-neutral-800/50 px-2 py-1 -mx-2 rounded-xl transition-colors cursor-pointer"
               >
                 {/* Avatar */}
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  isAdmin ? 'bg-primary text-primary-foreground' :
-                  isBroadcast ? 'bg-amber-500 text-white' :
-                  'bg-muted text-muted-foreground'
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 border ring-1 transition-all duration-300 shadow-lg relative overflow-hidden ${
+                  isAdmin ? 'bg-zinc-800 text-white border-white/10 ring-white/20' :
+                  isBroadcast ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 ring-amber-500/30' :
+                  `${theme?.bg} ${theme?.text} ${theme?.border} ${theme?.ring}`
                 }`}>
-                  {isBroadcast ? '📢' : (msg.avatar ? <img src={msg.avatar} className="w-full h-full rounded-full object-cover" alt="" /> : getInitials(msg.name))}
+                  {isBroadcast ? (
+                    <span style={{ filter: 'drop-shadow(0 0 5px rgba(245, 158, 11, 0.5))' }}>📢</span>
+                  ) : (
+                    <span 
+                      style={{ 
+                        filter: theme?.color 
+                          ? `drop-shadow(0 0 8px ${theme.color})` 
+                          : isAdmin 
+                            ? `drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))` 
+                            : 'none' 
+                      }}
+                      className="drop-shadow-sm font-black"
+                    >
+                      {getInitials(msg.name)}
+                    </span>
+                  )}
                 </div>
 
-                {/* Bubble */}
-                <div className={`flex flex-col max-w-[80%] ${isAdmin || isBroadcast ? 'items-end' : 'items-start'}`}>
-                  <div className="flex items-baseline gap-2 mb-0.5">
-                    <span className={`text-xs font-medium ${isAdmin ? 'text-primary' : isBroadcast ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}`}>
-                      {msg.name} {isAdmin && '(Host)'}
+                {/* Content */}
+                <div className="flex flex-col flex-1 min-w-0">
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className={`text-[11px] font-normal tracking-tight ${
+                      isAdmin ? 'text-primary' : 
+                      isBroadcast ? 'text-amber-400' : 
+                      'text-neutral-200'
+                    }`}>
+                      {msg.name} {isAdmin && <span className="text-[9px] bg-neutral-800 text-neutral-300 border border-neutral-700/50 px-1.5 py-0.5 rounded-full ml-1 font-medium not-italic">Host</span>}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">
-                      {msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    <span className="text-[9px] text-neutral-500">
+                      {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
                   
-                  {/* Private Message Indicator */}
+                  <div className={`text-[14px] leading-relaxed wrap-break-word mt-0.5 transition-colors ${
+                    isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
+                    msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
+                    'text-neutral-400 group-hover:text-neutral-300'
+                  }`}>
+                    {renderMessageWithLinks(msg.message, isAdmin || isBroadcast)}
+                  </div>
+
+                  {/* Private Reply Indicator */}
                   {msg.messageType === 'private' && msg.targetUserName && (
-                    <div className="text-[10px] text-purple-600 dark:text-purple-400 mb-1 flex items-center gap-1">
-                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
-                      </svg>
+                    <div className="mt-1 text-[9px] text-purple-400/80 font-medium flex items-center gap-1.5">
+                      <Pin className="w-2.5 h-2.5 rotate-45" />
                       Private reply to {msg.targetUserName}
                     </div>
                   )}
-                  
-                  <div className={`relative px-3 py-2 rounded-lg text-sm ${
-                    isBroadcast ? 'bg-amber-500/10 border border-amber-500/20 text-foreground' :
-                    msg.messageType === 'private' ? 'bg-purple-500/10 border border-purple-500/20 text-foreground' :
-                    isAdmin ? 'bg-primary/10 border border-primary/20 text-foreground' :
-                    'bg-muted text-foreground'
-                  }`}>
-                    {renderMessageWithLinks(msg.message, isAdmin || isBroadcast)}
-                    
-                    {/* Hover Actions */}
-                    <div className={`absolute top-1 ${isAdmin ? '-left-7' : '-right-7'} opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-0.5`}>
-                      {/* Pin Button - Only for Broadcast messages that are unpinned */ }
-                      {!msg.isPinned && isBroadcast && (
-                        <button 
-                          onClick={() => onPinMessage(msg.id!)}
-                          className="p-1 text-muted-foreground hover:text-amber-500 rounded"
-                          title="Pin"
-                        >
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/></svg>
-                        </button>
-                      )}
-                      {/* Reply Button - Only for user messages */ }
-                      {!isAdmin && !isBroadcast && (
-                        <button
-                          onClick={() => {
-                            setReplyTo({ id: msg.userId, email: msg.email, name: msg.name });
-                            setIsBroadcastMode(false);
-                          }}
-                          className="p-1 text-muted-foreground hover:text-primary rounded"
-                          title="Reply"
-                        >
-                           <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6"/></svg>
-                        </button>
-                      )}
-                          <button
-                            onClick={() => {
-                              if (window.confirm('Delete this message?')) {
-                                onDeleteMessage(msg.id!);
-                              }
-                            }}
-                            className="p-1 text-muted-foreground hover:text-destructive rounded"
-                            title="Delete"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
-                          </button>
-                        </div>
+
+                  {/* Hover Actions */}
+                  <div className="absolute -top-4 right-0 opacity-0 group-hover:opacity-100 flex items-center gap-1 bg-neutral-900/90 backdrop-blur-md rounded-lg p-0.5 border border-white/10 transition-all z-20 shadow-xl">
+                    {!msg.isPinned && isBroadcast && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onPinMessage(msg.id!);
+                        }}
+                        className="p-1.5 text-white/40 hover:text-amber-500 hover:bg-white/10 rounded-md transition-colors"
+                        title="Pin"
+                      >
+                        <Pin className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {!isAdmin && !isBroadcast && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setReplyTo({ id: msg.userId, email: msg.email, name: msg.name });
+                        }}
+                        className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors"
+                        title="Reply"
+                      >
+                        <Reply className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMessageToDelete(msg.id!);
+                      }}
+                      className="p-1.5 text-white/40 hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                      title="Delete"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button className="p-1.5 text-white/40 hover:text-white hover:bg-white/10 rounded-md transition-colors">
+                      <MoreVertical className="w-3.5 h-3.5" />
+                    </button>
                   </div>
                 </div>
               </div>
@@ -219,51 +292,139 @@ export function AdminChatPanel({
       </div>
 
       {/* Input Area */}
-      <div className={`p-4 border-t border-border ${isBroadcastMode ? 'bg-amber-500/5' : ''}`}>
-        {isBroadcastMode && (
-          <div className="flex items-center gap-2 mb-2 text-amber-600 dark:text-amber-400 text-xs font-medium">
-            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M18 3a1 1 0 00-1.447-.894L8.763 6H5a3 3 0 000 6h.28l1.771 5.316A1 1 0 008 18h1a1 1 0 001-1v-4.382l6.553 3.276A1 1 0 0018 15V3z" clipRule="evenodd" /></svg>
-            Broadcast Mode
+      <div className="px-4 pb-4 bg-[#0a0a0a] border-t border-white/5 shrink-0">
+        {/* Reply/Broadcast Bar */}
+        {(replyTo || isBroadcastMode) && (
+          <div className="flex items-center justify-between py-3 border-b border-neutral-800 mb-2 animate-in slide-in-from-bottom-1 duration-200">
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Reply className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
+              <p className="text-xs text-neutral-400 truncate">
+                {isBroadcastMode ? (
+                  <span className="text-amber-500 font-bold uppercase tracking-widest text-[10px]">Broadcast Mode</span>
+                ) : (
+                  <>Replying to <span className="text-neutral-100 font-medium">{replyTo?.name}</span></>
+                )}
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-4 shrink-0">
+              <div 
+                className="flex items-center gap-2 cursor-pointer group" 
+                onClick={() => setIsBroadcastMode(!isBroadcastMode)}
+              >
+                <BellRing className={`w-3.5 h-3.5 transition-colors ${isBroadcastMode ? 'text-amber-500' : 'text-neutral-500 group-hover:text-neutral-300'}`} />
+                <span className={`text-[10px] uppercase font-bold tracking-widest transition-colors ${isBroadcastMode ? 'text-amber-500' : 'text-neutral-500 group-hover:text-neutral-300'}`}>
+                  Broadcast
+                </span>
+                <div className={`w-8 h-4.5 rounded-full relative transition-colors ${isBroadcastMode ? 'bg-amber-600' : 'bg-neutral-700'}`}>
+                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-transform ${isBroadcastMode ? 'translate-x-4' : 'translate-x-0.5'}`}></div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  setReplyTo(null);
+                  setIsBroadcastMode(false);
+                }}
+                className="text-neutral-500 hover:text-neutral-200 transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         )}
-        {replyTo && (
-          <div className="flex items-center gap-2 mb-2 text-xs text-muted-foreground">
-            <span>Replying to <span className="font-medium text-foreground">{replyTo.name}</span></span>
-            <button onClick={() => setReplyTo(null)} className="hover:text-foreground">
-              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
-            </button>
-          </div>
-        )}
-        <div className="flex gap-2">
-          <Input
+
+        <div className="relative group mt-4">
+          <input
             type="text"
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isBroadcastMode ? "Broadcast message..." : replyTo ? `Reply to ${replyTo.name}...` : "Reply or broadcast"}
-            className={isBroadcastMode ? 'border-amber-500/50 focus-visible:ring-amber-500' : ''}
+            placeholder="Tap here to send your message"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2.5 px-4 pr-10 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-neutral-600 transition-all outline-none"
             disabled={isSending}
           />
-          
-          <Button
-            variant={isBroadcastMode ? "default" : "outline"}
-            size="icon"
-            onClick={() => setIsBroadcastMode(!isBroadcastMode)}
-            className={isBroadcastMode ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}
-            title="Toggle Broadcast"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5.882V19.24a1.76 1.76 0 01-3.417.592l-2.147-6.15M18 13a3 3 0 100-6M5.436 13.683A4.001 4.001 0 017 6h1.832c4.1 0 7.625-1.234 9.168-3v14c-1.543-1.766-5.067-3-9.168-3H7a3.988 3.988 0 01-1.564-.317z"/></svg>
-          </Button>
-          
-          <Button
-            onClick={handleSend}
-            disabled={!inputText.trim() || isSending || (!isBroadcastMode && !replyTo)}
-            className={isBroadcastMode ? 'bg-amber-500 hover:bg-amber-600' : ''}
-          >
-            Send
-          </Button>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+            {inputText.trim() ? (
+              <button 
+                onClick={handleSend}
+                disabled={isSending}
+                className="text-neutral-500 hover:text-neutral-300 transition-colors"
+              >
+                <SendHorizontal className="w-4 h-4" />
+              </button>
+            ) : (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button 
+                    className="text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    <Smile className="w-5 h-5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0 border-none bg-transparent shadow-none" side="top" align="end">
+                  <EmojiPicker
+                    theme={Theme.DARK}
+                    onEmojiClick={(emojiData) => setInputText(prev => prev + emojiData.emoji)}
+                    width={300}
+                    height={400}
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Clear Chat Dialog */}
+      <AlertDialog open={isClearChatOpen} onOpenChange={setIsClearChatOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Clear all messages?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All messages in this session will be permanently deleted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                onClearChat();
+                setIsClearChatOpen(false);
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Clear Chat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Delete Message Dialog */}
+      <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete message?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This specific message will be removed from the chat for everyone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (messageToDelete) {
+                  onDeleteMessage(messageToDelete);
+                  setMessageToDelete(null);
+                }
+              }}
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

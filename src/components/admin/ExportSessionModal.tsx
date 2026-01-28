@@ -9,6 +9,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { generateExportFilename, formatDisplayName } from '@/lib/export';
 
 interface ExportSessionModalProps {
@@ -84,13 +85,12 @@ export function ExportSessionModal({
               <label htmlFor="exportName" className="block text-sm font-medium mb-1.5">
                 Export Name
               </label>
-              <input
+              <Input
                 id="exportName"
                 type="text"
                 value={exportName}
                 onChange={(e) => setExportName(e.target.value)}
                 placeholder="e.g., How To CSS | B-522"
-                className="w-full px-3 py-2 rounded-lg border border-border bg-background text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
                 disabled={isExporting}
               />
             </div>
