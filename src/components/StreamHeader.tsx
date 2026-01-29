@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { Users } from 'lucide-react';
 
 interface StreamHeaderProps {
@@ -20,6 +20,7 @@ export function StreamHeader({
   onMuteToggle,
 }: StreamHeaderProps) {
   const [elapsed, setElapsed] = useState(0);
+  const location = useLocation();
 
   // Update elapsed time every second
   useEffect(() => {
@@ -105,6 +106,7 @@ export function StreamHeader({
         {/* Help link */}
         <Link
           to="/help"
+          state={{ from: location.pathname }}
           className="p-2 rounded-lg bg-neutral-800 text-neutral-400 hover:text-white hover:bg-neutral-700 transition-colors"
           title="Help"
         >

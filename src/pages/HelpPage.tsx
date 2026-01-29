@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Mail, HelpCircle } from 'lucide-react';
@@ -40,6 +40,13 @@ const FAQS = [
 
 export function HelpPage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Check if we came from a specific page (e.g., live session)
+  const from = location.state?.from;
+  const isFromLiveSession = from && (from.startsWith('/s/') || from.startsWith('/a/'));
+  const backLabel = isFromLiveSession ? 'Back to Live Session' : 'Back to Dashboard';
+  const backPath = from || '/';
 
   return (
     <div className="min-h-screen bg-neutral-50/50 dark:bg-neutral-950 font-sans text-foreground">
@@ -49,11 +56,11 @@ export function HelpPage() {
           <Button 
             variant="ghost" 
             size="sm" 
-            onClick={() => navigate('/')} 
+            onClick={() => navigate(backPath)} 
             className="gap-2 -ml-2 text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to Dashboard
+            {backLabel}
           </Button>
           <span className="font-medium text-sm text-foreground/80">Help Center</span>
         </div>
