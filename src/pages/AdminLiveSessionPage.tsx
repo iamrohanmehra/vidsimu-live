@@ -18,17 +18,14 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { messagesCollection } from '@/lib/collections';
+import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminChatPanel } from '@/components/admin/AdminChatPanel';
-import { AdminViewersList } from '@/components/admin/AdminViewersList';
-import { AdminPollManager } from '@/components/admin/AdminPollManager';
 import { ExportSessionModal } from '@/components/admin/ExportSessionModal';
 import { useSessionExport } from '@/hooks/useSessionExport';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Separator } from '@/components/ui/separator';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { CountdownScreen } from '@/components/CountdownScreen';
-import { Volume2, VolumeX, ExternalLink, Download, Sun, Moon, Radio, Copy, Check } from 'lucide-react';
+import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -45,13 +42,8 @@ export function AdminLiveSessionPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [broadcastText, setBroadcastText] = useState('');
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
-  const [isDark, setIsDark] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return document.documentElement.classList.contains('dark');
-    }
-    return true;
-  });
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
@@ -66,16 +58,6 @@ export function AdminLiveSessionPage() {
     viewers,
   });
 
-  // Theme toggle
-  const toggleTheme = useCallback(() => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
-    if (newIsDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [isDark]);
 
   // Timer
   useEffect(() => {
@@ -302,155 +284,143 @@ export function AdminLiveSessionPage() {
           {/* Main Content Area (Header + Video) */}
           <div className="flex-1 flex flex-col min-w-0 h-full">
             {/* Header */}
-            <header className="border-b border-border px-6 py-3 shrink-0">
-              <div className="flex items-center justify-between">
-                {/* Left Side: Title & Info */}
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-3">
-                    <h1 className="text-lg font-semibold whitespace-nowrap">
-                      {event.title} {event.topic && `| ${event.topic}`}
-                      <span className="mx-2 text-muted-foreground font-normal">|</span>
-                      <span className="font-mono text-sm bg-muted/50 px-2 py-0.5 rounded inline-flex items-center gap-2 group">
-                        {id}
-                        <button 
-                          onClick={handleCopyId}
-                          className="hover:text-primary transition-colors focus:outline-none"
-                          title="Copy Session ID"
-                        >
-                          {isCopied ? (
-                            <Check className="w-3.5 h-3.5 text-green-500" />
-                          ) : (
-                            <Copy className="w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground" />
-                          )}
-                        </button>
-                      </span>
-                    </h1>
+            <header className="h-14 border-b border-neutral-800 flex items-center px-6 bg-neutral-900/50 backdrop-blur-md shrink-0 justify-between gap-4">
+              {/* Left Side: Title & Info */}
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="flex items-center gap-3 min-w-0">
+                  <h1 className="text-sm font-medium text-neutral-200 truncate flex items-center gap-2">
+                    <span className="truncate">{event.title}</span>
+                    {event.topic && (
+                      <>
+                        <span className="text-neutral-600">|</span>
+                        <span className="text-neutral-400 truncate">{event.topic}</span>
+                      </>
+                    )}
+                  </h1>
+                  
+                  <div className="font-mono text-[10px] text-neutral-500 bg-neutral-800/50 border border-neutral-800 px-2 py-0.5 rounded-md flex items-center gap-2 group shrink-0 transition-colors hover:border-neutral-700">
+                    <span className="truncate max-w-[80px]">{id}</span>
+                    <button 
+                      onClick={handleCopyId}
+                      className="hover:text-neutral-300 transition-colors focus:outline-none"
+                      title="Copy Session ID"
+                    >
+                      {isCopied ? (
+                        <Check className="w-3 h-3 text-emerald-500" />
+                      ) : (
+                        <Copy className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400" />
+                      )}
+                    </button>
+                  </div>
+
+                  {streamStatus.status === 'live' && (
+                    <span className="px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5 shrink-0" id="live-indicator">
+                      <Radio className="w-3 h-3" />
+                      Live
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Side: Metrics & Actions */}
+              <div className="flex items-center gap-6 shrink-0">
+                {/* Metrics */}
+                <div className="flex items-center gap-6">
+                  <div className="flex items-center gap-2">
+                    <UsersRound className="w-4 h-4 text-neutral-500" />
+                    <p className="text-sm font-bold tabular-nums text-neutral-200" id="viewer-count">{viewerCount}</p>
+                  </div>
+                  
+                  <div className="h-4 w-px bg-neutral-800" />
+                  
+                  <div className="text-right min-w-[80px]">
+                    {streamStatus.status === 'unscheduled' && (
+                      <p className="text-xs text-neutral-500">Not scheduled</p>
+                    )}
+                    {streamStatus.status === 'scheduled' && (
+                      <div className="flex items-center gap-2 justify-end">
+                        <span className="text-xs text-amber-500 font-mono">
+                          {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                        <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Starts</span>
+                      </div>
+                    )}
+                    {streamStatus.status === 'ended' && (
+                      <p className="text-xs font-bold text-destructive uppercase tracking-wider">Ended</p>
+                    )}
                     {streamStatus.status === 'live' && (
-                      <span className="px-2 py-0.5 rounded-full bg-destructive/10 border border-destructive/20 text-destructive text-xs font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5" id="live-indicator">
-                        <Radio className="w-3 h-3" />
-                        Live
-                      </span>
+                      <div className="flex items-center gap-2 justify-end">
+                         <span className="text-xs font-mono tabular-nums text-neutral-300">
+                          {formatTime(streamStatus.elapsed)}
+                        </span>
+                        <span className="text-neutral-600">/</span>
+                        <span className="text-xs font-mono tabular-nums text-neutral-500">
+                          {formatTime(streamStatus.duration)}
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Right Side: Metrics & Actions */}
-                <div className="flex items-center gap-6">
-                  {/* Metrics */}
-                  <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                      <p className="text-xl font-bold tabular-nums" id="viewer-count">{viewerCount}</p>
-                    </div>
-                    
-                    <Separator orientation="vertical" className="h-8" />
-                    
-                    <div className="text-left min-w-[120px]">
-                      {streamStatus.status === 'unscheduled' && (
-                        <p className="text-sm text-muted-foreground">Not scheduled</p>
-                      )}
-                      {streamStatus.status === 'scheduled' && (
-                        <div>
-                          <p className="text-lg font-mono text-amber-500">
-                            {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Scheduled</p>
-                        </div>
-                      )}
-                      {streamStatus.status === 'ended' && (
-                        <p className="text-sm font-medium text-destructive">Ended</p>
-                      )}
-                      {streamStatus.status === 'live' && (
-                        <div>
-                          <p className="text-lg font-mono tabular-nums">
-                            {formatTime(streamStatus.elapsed)} <span className="text-muted-foreground">/</span> {formatTime(streamStatus.duration)}
-                          </p>
-                          <p className="text-xs text-muted-foreground">Duration</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
+                <div className="h-4 w-px bg-neutral-800" />
 
-                  <Separator orientation="vertical" className="h-8" />
+                {/* Header Actions */}
+                <div className="flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsPreviewMuted(!isPreviewMuted)}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
+                        id="toggle-preview-mute"
+                      >
+                        {isPreviewMuted ? (
+                          <VolumeX className="h-4 w-4" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                  {/* Header Actions */}
-                  <div className="flex items-center gap-2">
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setIsPreviewMuted(!isPreviewMuted)}
-                          className="h-8 w-8"
-                          id="toggle-preview-mute"
-                        >
-                          {isPreviewMuted ? (
-                            <VolumeX className="h-4 w-4" />
-                          ) : (
-                            <Volume2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}</p>
-                      </TooltipContent>
-                    </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => window.open(`/preview/${id}`, '_blank')}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
+                        id="open-preview"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Open Public Preview</p>
+                    </TooltipContent>
+                  </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => window.open(`/preview/${id}`, '_blank')}
-                          className="h-8 w-8"
-                          id="open-preview"
-                        >
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>Open Public Preview</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={() => setIsExportModalOpen(true)}
-                          disabled={streamStatus.status !== 'ended'}
-                          className="h-8 w-8"
-                          id="open-export-modal"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{streamStatus.status !== 'ended' ? 'Export disabled until session ends' : 'Export Session Data'}</p>
-                      </TooltipContent>
-                    </Tooltip>
-
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          onClick={toggleTheme}
-                          className="h-8 w-8"
-                          id="toggle-theme"
-                        >
-                          {isDark ? (
-                            <Sun className="h-4 w-4" />
-                          ) : (
-                            <Moon className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>
-                        <p>{isDark ? 'Switch to light mode' : 'Switch to dark mode'}</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsExportModalOpen(true)}
+                        disabled={streamStatus.status !== 'ended'}
+                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent"
+                        id="open-export-modal"
+                      >
+                        <Download className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{streamStatus.status !== 'ended' ? 'Export disabled until session ends' : 'Export Session Data'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </header>
@@ -469,6 +439,7 @@ export function AdminLiveSessionPage() {
                       objectFit="contain"
                       streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
                       className="w-full h-full"
+                      instructorName={!event.screenUrl ? (event.instructor || 'Ashish Shukla') : undefined}
                     />
                   </div>
                 </div>
@@ -498,13 +469,11 @@ export function AdminLiveSessionPage() {
           </div>
 
           {/* Sidebars (Full Height) */}
-          {/* Chat Panel */}
-          <aside className="w-[360px] border-l border-border flex flex-col h-full overflow-hidden shrink-0">
+          <aside id="sidebar-messages" className="w-[350px] h-full border-l border-neutral-800 bg-neutral-900 flex flex-col shrink-0 relative transition-all duration-300">
             <AdminChatPanel
               messages={messages}
               pinnedMessages={pinnedMessages}
               onSendMessage={handleSendMessage}
-              onSendBroadcast={handleSendBroadcast}
               onPinMessage={handlePinMessage}
               onUnpinMessage={handleUnpinMessage}
               onDeleteMessage={handleDeleteMessage}
@@ -513,46 +482,18 @@ export function AdminLiveSessionPage() {
             />
           </aside>
 
-          {/* Audience/Polls Sidebar */}
-          <aside className="w-[360px] border-l border-border flex flex-col h-full overflow-hidden shrink-0">
-            {/* Instructor Video at the top */}
-            <div className="w-full aspect-video border-b border-border bg-black shrink-0">
-              <VideoPlayer
-                url={event.url}
-                muted={isPreviewMuted}
-                onMuteChange={setIsPreviewMuted}
-                isFaceVideo={true}
-                objectFit="cover"
-                streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
-                className="w-full h-full"
-              />
-            </div>
-
-            <Tabs defaultValue="audience" className="flex-1 flex flex-col min-h-0 overflow-hidden">
-              <div className="px-4 pt-3 shrink-0">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="audience">
-                    Audience ({viewerCount})
-                  </TabsTrigger>
-                  <TabsTrigger value="polls">
-                    Polls
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-              
-              <TabsContent value="audience" className="flex-1 m-0 overflow-hidden min-h-0">
-                <div className="h-full">
-                  <AdminViewersList viewers={viewers} viewerCount={viewerCount} />
-                </div>
-              </TabsContent>
-              
-              <TabsContent value="polls" className="flex-1 m-0 overflow-hidden min-h-0">
-                <div className="h-full">
-                  <AdminPollManager streamId={id || ''} />
-                </div>
-              </TabsContent>
-            </Tabs>
-          </aside>
+          <AdminSidebar
+            id={id!}
+            event={event}
+            viewers={viewers}
+            viewerCount={viewerCount}
+            isPreviewMuted={isPreviewMuted}
+            setIsPreviewMuted={setIsPreviewMuted}
+            broadcastText={broadcastText}
+            setBroadcastText={setBroadcastText}
+            handleSendBroadcast={handleSendBroadcast}
+            isSending={isSending}
+          />
         </div>
 
         {/* Export Session Modal */}

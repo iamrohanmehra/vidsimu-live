@@ -109,9 +109,20 @@ export interface PollVote {
   id?: string;
   pollId: string;
   visitorId: string;
+  name?: string;
   email?: string;
   selectedOptions: string[];
   votedAt: Date;
+}
+
+// Poll Template for reusable polls
+export interface PollTemplate {
+  id?: string;
+  name: string;
+  question: string;
+  options: string[];
+  type: 'single' | 'multiple';
+  createdAt: Date;
 }
 
 // ============================================
@@ -183,3 +194,38 @@ export interface SessionExport {
   messages: MessageExport[];
   polls: PollExport[];
 }
+
+// ============================================
+// Messaging Templates Types
+// ============================================
+
+// Quick Reply Template (for admin chat replies)
+export interface QuickReplyTemplate {
+  id?: string;
+  text: string;
+  createdAt: Date;
+}
+
+// Broadcast Template (for announcements)
+export interface BroadcastTemplate {
+  id?: string;
+  text: string;
+  link?: string;
+  createdAt: Date;
+}
+
+// ============================================
+// Ban Management Types
+// ============================================
+
+// Banned User record
+export interface BannedUser {
+  id?: string;
+  sessionId: string;
+  email: string;
+  name: string;
+  bannedAt: Date;
+  bannedBy: string;
+  reason?: string;
+}
+

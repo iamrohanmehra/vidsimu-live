@@ -1,6 +1,14 @@
-import { useState, useRef, useEffect, useCallback, type FormEvent } from 'react';
-
-import { UserAvatar } from '@/components/ui/UserAvatar';
+import { useState, useRef, useEffect, useMemo } from 'react';
+import { 
+  MessageSquare, 
+  Smile, 
+  Sparkles, 
+  Megaphone,
+  SendHorizontal,
+  Pin
+} from 'lucide-react';
+import EmojiPicker, { Theme } from 'emoji-picker-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import type { Message } from '@/types';
 
 interface ChatPanelProps {
@@ -8,10 +16,7 @@ interface ChatPanelProps {
   onSendMessage: (text: string) => Promise<void>;
   isSending: boolean;
   isOpen?: boolean;
-  onClose?: () => void;
 }
-
-const MAX_MESSAGE_LENGTH = 500;
 
 export function ChatPanel({ 
   messages, 
@@ -19,105 +24,165 @@ export function ChatPanel({
   isSending, 
   isOpen = true,
 }: ChatPanelProps) {
-  const [input, setInput] = useState('');
+  const [inputText, setInputText] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
 
   // Separate pinned (broadcasts) and regular messages
-  const pinnedMessages = messages.filter(m => m.isPinned);
-  const regularMessages = messages.filter(m => !m.isPinned);
-
-  // Auto-scroll to bottom when new messages arrive
+  const pinnedMessages = useMemo(() => messages.filter(m => m.isPinned), [messages]);
+  
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [regularMessages.length]);
+  }, [messages.length]);
 
-  const handleSubmit = useCallback(async (e: FormEvent) => {
-    e.preventDefault();
+  const handleSend = async () => {
+    if (!inputText.trim() || isSending) return;
     
-    if (!input.trim() || isSending) return;
+    await onSendMessage(inputText.trim());
+    setInputText('');
+  };
 
-    try {
-      await onSendMessage(input);
-      setInput('');
-      inputRef.current?.focus();
-    } catch (error) {
-      console.error('Failed to send message:', error);
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
     }
-  }, [input, isSending, onSendMessage]);
+  };
+
+  const getInitials = (name: string) => name?.charAt(0)?.toUpperCase() || '?';
+
+  const getAvatarColor = (name: string) => {
+    const themes = [
+      { bg: 'bg-zinc-800', text: 'text-blue-300', border: 'border-blue-500/20', ring: 'ring-blue-500/40', color: 'rgba(96,165,250,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-emerald-300', border: 'border-emerald-500/20', ring: 'ring-emerald-500/40', color: 'rgba(52,211,153,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-violet-300', border: 'border-violet-500/20', ring: 'ring-violet-500/40', color: 'rgba(167,139,250,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-rose-300', border: 'border-rose-500/20', ring: 'ring-rose-500/40', color: 'rgba(251,113,133,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-amber-300', border: 'border-amber-500/20', ring: 'ring-amber-500/40', color: 'rgba(251,191,36,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-cyan-300', border: 'border-cyan-500/20', ring: 'ring-cyan-500/40', color: 'rgba(34,211,238,0.7)' },
+      { bg: 'bg-zinc-800', text: 'text-indigo-300', border: 'border-indigo-500/20', ring: 'ring-indigo-500/40', color: 'rgba(129,140,248,0.7)' },
+    ];
+    const charCodeSum = (name || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return themes[charCodeSum % themes.length];
+  };
+
+  const isJoinMessage = (message: string) => {
+    return message.toLowerCase().endsWith(' joined') || 
+           message.toLowerCase().startsWith('joined ') ||
+           message.toLowerCase().includes(' has joined');
+  };
 
   if (!isOpen) return null;
 
   return (
-    <div className="flex flex-col h-full bg-black/50 backdrop-blur-sm">
-      
-      {/* Pinned Messages (Broadcasts) - Admin Style */}
+    <div className="flex flex-col h-full bg-transparent text-white">
+      {/* Header */}
+      <div className="h-14 border-b border-neutral-800 flex items-center px-6 bg-neutral-900/50 backdrop-blur-md shrink-0">
+        <h2 className="text-xs font-normal text-neutral-100 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" /> Chat
+        </h2>
+      </div>
+
+      {/* Pinned Section / Broadcast Banner */}
       {pinnedMessages.length > 0 && (
-        <div className="bg-neutral-900/50 border-b border-neutral-800 px-4 py-3 shrink-0 backdrop-blur-md">
-          <div className="flex items-center gap-2 mb-2">
-            <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-            </svg>
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 flex items-start gap-3 shrink-0 relative group">
+          <div className="mt-0.5 shrink-0">
+            <Megaphone className="w-4 h-4 text-orange-500" />
           </div>
-          <div className="space-y-2 max-h-32 overflow-y-auto custom-scrollbar">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Announcement</p>
             {pinnedMessages.map(msg => (
-              <div key={msg.id} className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-2.5">
-                <p className="text-sm text-neutral-200 leading-relaxed font-light">
-                  {renderMessageWithLinks(msg.message, true)}
-                </p>
-              </div>
+              <p key={msg.id} className="text-xs text-neutral-200 line-clamp-2 leading-relaxed">
+                {msg.message}
+              </p>
             ))}
           </div>
         </div>
       )}
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 md:p-3 custom-scrollbar">
+      {/* Messages List */}
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 bg-neutral-900/30 custom-scrollbar">
         {messages.length === 0 ? (
-          <div className="text-center text-neutral-500 py-8">
+          <div className="h-full flex flex-col items-center justify-center text-white/20">
+            <MessageSquare className="w-10 h-10 opacity-20 mb-3" />
             <p className="text-sm">No messages yet</p>
-            <p className="text-xs mt-1">Be the first to say hello! 👋</p>
           </div>
         ) : (
-          regularMessages.map((msg, index) => {
-            const isPrivate = msg.messageType === 'private';
+          messages.map((msg, idx) => {
             const isAdmin = msg.isAdminMessage;
+            const isBroadcast = msg.messageType === 'broadcast' || msg.isPinned;
             
+            // Check for join messages
+            if (isJoinMessage(msg.message)) {
+              return (
+                <div key={msg.id || idx} className="py-1 px-4 text-center">
+                  <span className="text-[10px] text-neutral-500 font-medium bg-neutral-800/50 px-3 py-1 rounded-full border border-neutral-700/50 inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500 inline mr-0.5" />
+                    <span className="text-neutral-300 font-normal">{msg.name}</span> joined
+                  </span>
+                </div>
+              );
+            }
+
+            const theme = !isAdmin && !isBroadcast ? getAvatarColor(isAdmin ? 'Team Codekaro' : msg.name) : null;
+            const displayName = isAdmin ? 'Team Codekaro' : msg.name;
+
             return (
-              <div
-                key={msg.id || index}
-                className={`flex gap-3 group ${isPrivate ? 'bg-violet-500/10 -mx-2 px-2 py-2 rounded-lg border border-violet-500/20' : ''}`}
+              <div 
+                key={msg.id || idx} 
+                className="group relative flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 px-2 py-1 -mx-2 rounded-xl transition-colors"
               >
-                <UserAvatar
-                  src={msg.avatar}
-                  name={isAdmin ? 'Team Codekaro' : msg.name}
-                  email={msg.email}
-                  className="w-8 h-8 shrink-0 mt-0.5"
-                />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className={`font-semibold text-sm truncate ${isAdmin ? 'text-violet-400' : 'text-white'}`}>
-                      {isAdmin ? 'Team Codekaro' : msg.name}
+                {/* Avatar */}
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 border ring-1 transition-all duration-300 shadow-lg relative overflow-hidden ${
+                  isAdmin ? 'bg-zinc-800 text-white border-white/10 ring-white/20' :
+                  isBroadcast ? 'bg-amber-500/10 text-amber-400 border-amber-500/20 ring-amber-500/30' :
+                  `${theme?.bg} ${theme?.text} ${theme?.border} ${theme?.ring}`
+                }`}>
+                  {isBroadcast ? (
+                    <span style={{ filter: 'drop-shadow(0 0 5px rgba(245, 158, 11, 0.5))' }}>📢</span>
+                  ) : (
+                    <span 
+                      style={{ 
+                        filter: theme?.color 
+                          ? `drop-shadow(0 0 8px ${theme.color})` 
+                          : isAdmin 
+                            ? `drop-shadow(0 0 8px rgba(255, 255, 255, 0.4))` 
+                            : 'none' 
+                      }}
+                      className="drop-shadow-sm font-black"
+                    >
+                      {getInitials(displayName)}
                     </span>
-                    {isAdmin && (
-                       <span className="bg-violet-500/20 text-violet-300 text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wide">
-                        Host
-                      </span>
-                    )}
-                    {isPrivate && (
-                      <span className="bg-violet-500 text-white text-[10px] px-1.5 py-0.5 rounded uppercase font-bold tracking-wide flex items-center gap-1">
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
-                        Private
-                      </span>
-                    )}
-                    <span className="text-xs text-neutral-500 ml-auto shrink-0 flex items-center gap-2">
-                      {formatTime(msg.timestamp)}
+                  )}
+                </div>
+
+                {/* Content */}
+                <div className="flex-1">
+                  <div className="flex items-baseline justify-between">
+                    <span className={`font-normal text-[11px] ${isAdmin ? 'text-primary' : isBroadcast ? 'text-amber-400' : 'text-neutral-200'}`}>
+                      {displayName}
+                      {isAdmin && (
+                        <span className="ml-1.5 opacity-60 font-bold uppercase tracking-tighter text-[9px]">Admin</span>
+                      )}
+                    </span>
+                    <span className="text-[9px] text-neutral-500">
+                      {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
-                  <p className={`text-sm wrap-break-word font-light ${isPrivate ? 'text-violet-200' : 'text-neutral-300'}`}>
-                    {renderMessageWithLinks(msg.message, isAdmin || msg.messageType === 'broadcast')}
-                  </p>
+                  <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
+                    isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
+                    msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
+                    'text-neutral-400 group-hover:text-neutral-300'
+                  }`}>
+                    {renderMessageWithLinks(msg.message, !!isAdmin || !!isBroadcast)}
+                  </div>
+
+                  {/* Private Reply Indicator */}
+                  {msg.messageType === 'private' && (
+                    <div className="mt-1 text-[9px] text-purple-400/80 font-medium flex items-center gap-1.5">
+                      <Pin className="w-2.5 h-2.5 rotate-45" />
+                      Private Message
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -126,59 +191,56 @@ export function ChatPanel({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="px-4 py-3 md:p-3">
-        <form onSubmit={handleSubmit} className="relative flex items-center bg-neutral-900 border border-neutral-800 rounded-lg p-1.5 focus-within:border-neutral-700 transition-all duration-300 group">
+      {/* Input Area */}
+      <div className="px-4 pb-4 bg-neutral-900 border-t border-neutral-800 shrink-0">
+        <div className="relative group mt-4">
           <input
-            ref={inputRef}
             type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value.slice(0, MAX_MESSAGE_LENGTH))}
+            value={inputText}
+            onChange={(e) => setInputText(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Tap here to send your message"
+            className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2.5 px-4 pr-10 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-neutral-600 transition-all outline-none"
             disabled={isSending}
-            className="flex-1 bg-transparent px-3 py-2 text-sm text-neutral-200 placeholder-neutral-500 focus:outline-none w-full min-w-0"
           />
-          <button
-            type="submit"
-            disabled={!input.trim() || isSending}
-            className={`
-              flex items-center justify-center h-9 w-9 rounded-full transition-all duration-300 shrink-0
-              ${(!input.trim() || isSending)
-                ? 'bg-neutral-800 text-neutral-500 scale-95 opacity-50 cursor-not-allowed'
-                : 'bg-white text-black hover:bg-neutral-200 shadow-md'
-              }
-            `}
-          >
-            {isSending ? (
-              <svg className="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
+            {inputText.trim() ? (
+              <button 
+                onClick={handleSend}
+                disabled={isSending}
+                className="text-neutral-500 hover:text-neutral-300 transition-colors"
+              >
+                <SendHorizontal className="w-4 h-4" />
+              </button>
             ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="m5 12 7-7 7 7"></path>
-                <path d="M12 19V5"></path>
-              </svg>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button 
+                    className="text-neutral-500 hover:text-neutral-300 transition-colors"
+                  >
+                    <Smile className="w-5 h-5" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-full p-0 border-none bg-transparent shadow-none" side="top" align="end">
+                  <EmojiPicker
+                    theme={Theme.DARK}
+                    onEmojiClick={(emojiData) => setInputText(prev => prev + emojiData.emoji)}
+                    width={300}
+                    height={400}
+                  />
+                </PopoverContent>
+              </Popover>
             )}
-          </button>
-        </form>
+          </div>
+        </div>
       </div>
     </div>
   );
 }
 
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
-}
-
 function renderMessageWithLinks(text: string, isClickable: boolean) {
   if (!isClickable) return text;
 
-  // Regex to capture URLs
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const parts = text.split(urlRegex);
 
@@ -190,7 +252,7 @@ function renderMessageWithLinks(text: string, isClickable: boolean) {
           href={part}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-violet-400 hover:text-violet-300 hover:underline break-all"
+          className="text-primary hover:underline break-all relative z-10"
           onClick={(e) => e.stopPropagation()}
         >
           {part}
@@ -200,3 +262,4 @@ function renderMessageWithLinks(text: string, isClickable: boolean) {
     return part;
   });
 }
+

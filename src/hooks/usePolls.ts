@@ -5,6 +5,8 @@ import {
   onSnapshot,
   addDoc,
   updateDoc,
+  deleteDoc,
+  getDocs,
   doc,
   serverTimestamp,
   Timestamp,
@@ -12,7 +14,18 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { pollsCollection, pollVotesCollection } from '@/lib/collections';
-import type { Poll, PollOption } from '@/types';
+import type { Poll, PollOption, PollVote } from '@/types';
+
+// Voter information for display
+export interface VoterInfo {
+  visitorId: string;
+  name: string;
+  email: string;
+  selectedOptions: string[];
+}
+
+// Voters grouped by option
+export type VotersByOption = Record<string, VoterInfo[]>;
 
 interface UsePollsOptions {
   streamId: string;
@@ -22,6 +35,7 @@ interface UsePollsOptions {
 export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
+  const [votersByOption, setVotersByOption] = useState<VotersByOption>({});
   const [isLoading, setIsLoading] = useState(true);
 
   // Subscribe to all polls for this stream
@@ -63,6 +77,49 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
 
     return () => unsubscribe();
   }, [streamId, enabled]);
+
+  // Subscribe to votes for active poll to get voter details
+  useEffect(() => {
+    if (!activePoll?.id) {
+      setVotersByOption({});
+      return;
+    }
+
+    const q = query(
+      pollVotesCollection,
+      where('pollId', '==', activePoll.id)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const voters: VotersByOption = {};
+      
+      // Initialize empty arrays for each option
+      activePoll.options.forEach(opt => {
+        voters[opt.id] = [];
+      });
+
+      snapshot.forEach((docSnap) => {
+        const data = docSnap.data() as PollVote;
+        const voterInfo: VoterInfo = {
+          visitorId: data.visitorId,
+          name: data.name || 'Anonymous',
+          email: data.email || '',
+          selectedOptions: data.selectedOptions || [],
+        };
+
+        // Add voter to each option they selected
+        voterInfo.selectedOptions.forEach(optionId => {
+          if (voters[optionId]) {
+            voters[optionId].push(voterInfo);
+          }
+        });
+      });
+
+      setVotersByOption(voters);
+    });
+
+    return () => unsubscribe();
+  }, [activePoll?.id, activePoll?.options]);
 
   // Create a new poll
   const createPoll = useCallback(async (
@@ -122,14 +179,31 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
     });
   }, []);
 
+  // Delete a poll and all its associated votes
+  const deletePoll = useCallback(async (pollId: string) => {
+    // First, delete all votes for this poll
+    const votesQuery = query(pollVotesCollection, where('pollId', '==', pollId));
+    const votesSnapshot = await getDocs(votesQuery);
+    
+    const deletePromises = votesSnapshot.docs.map(voteDoc => 
+      deleteDoc(doc(db, 'poll_votes', voteDoc.id))
+    );
+    await Promise.all(deletePromises);
+    
+    // Then delete the poll itself
+    await deleteDoc(doc(db, 'polls', pollId));
+  }, []);
+
   return {
     polls,
     activePoll,
+    votersByOption,
     isLoading,
     createPoll,
     launchPoll,
     endPoll,
     toggleResultsVisibility,
+    deletePoll,
   };
 }
 
@@ -137,10 +211,12 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
 interface UseActivePollOptions {
   streamId: string;
   visitorId: string;
+  userName?: string;
+  userEmail?: string;
   enabled?: boolean;
 }
 
-export function useActivePoll({ streamId, visitorId, enabled = true }: UseActivePollOptions) {
+export function useActivePoll({ streamId, visitorId, userName, userEmail, enabled = true }: UseActivePollOptions) {
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
   const [hasVoted, setHasVoted] = useState(false);
   const [userVote, setUserVote] = useState<string[]>([]);
@@ -212,10 +288,12 @@ export function useActivePoll({ streamId, visitorId, enabled = true }: UseActive
 
     setIsSubmitting(true);
     try {
-      // Add vote document
+      // Add vote document with user info for voter display
       await addDoc(pollVotesCollection, {
         pollId: activePoll.id,
         visitorId,
+        name: userName || 'Anonymous',
+        email: userEmail || '',
         selectedOptions,
         votedAt: serverTimestamp(),
       });

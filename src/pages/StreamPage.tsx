@@ -7,6 +7,7 @@ import { useSessionGating } from '@/hooks/useSessionGating';
 import { useChat } from '@/hooks/useChat';
 import { useCurrentViewers } from '@/hooks/useCurrentViewers';
 import { useOptimisticVideoSync } from '@/hooks/useOptimisticVideoSync';
+import { useBannedUsers } from '@/hooks/useBannedUsers';
 import { EmailVerificationModal } from '@/components/EmailVerificationModal';
 import { JoinSessionModal } from '@/components/JoinSessionModal';
 import { StreamContainer } from '@/components/StreamContainer';
@@ -15,6 +16,7 @@ import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { SessionEndedScreen } from '@/components/SessionEndedScreen';
 import { SessionLimitScreen } from '@/components/SessionLimitScreen';
 import { SessionNotScheduledScreen } from '@/components/SessionNotScheduledScreen';
+import { SessionBannedScreen } from '@/components/SessionBannedScreen';
 import type { Event, User, StreamState, Message } from '@/types';
 
 export function StreamPage() {
@@ -71,6 +73,18 @@ export function StreamPage() {
     streamId: uuid || '',
     enabled: !!uuid,
   });
+
+  // Check if user is banned from this session
+  const { isUserBanned, isLoading: isBanCheckLoading } = useBannedUsers({
+    sessionId: uuid || '',
+    enabled: !!uuid && !!user,
+  });
+
+  // Determine if current user is banned
+  const isCurrentUserBanned = useMemo(() => {
+    if (!user?.email) return false;
+    return isUserBanned(user.email);
+  }, [user, isUserBanned]);
 
   // Combine messages for display
   const allMessages = useMemo(() => {
@@ -233,6 +247,11 @@ export function StreamPage() {
     return <SessionLimitScreen onRefresh={handleRefresh} />;
   }
 
+  // User is banned from this session
+  if (user && isCurrentUserBanned && !isBanCheckLoading) {
+    return <SessionBannedScreen />;
+  }
+
   // Countdown state
   if (streamState === 'countdown') {
     return (
@@ -297,6 +316,8 @@ export function StreamPage() {
         onStreamEnd={handleStreamEnd}
         initialSeekTime={syncState.estimatedTime} // Pass optimistic position for immediate seeking
         visitorId={clientId}
+        userName={user?.name}
+        userEmail={user?.email}
       />
 
       {/* Black Curtain - Hides the stream while user is verifying/joining */}

@@ -4,10 +4,17 @@ import { useActivePoll } from '@/hooks/usePolls';
 interface PollVoteCardProps {
   streamId: string;
   visitorId: string;
+  userName?: string;
+  userEmail?: string;
 }
 
-export function PollVoteCard({ streamId, visitorId }: PollVoteCardProps) {
-  const { activePoll, hasVoted, userVote, isSubmitting, submitVote } = useActivePoll({ streamId, visitorId });
+export function PollVoteCard({ streamId, visitorId, userName, userEmail }: PollVoteCardProps) {
+  const { activePoll, hasVoted, userVote, isSubmitting, submitVote } = useActivePoll({ 
+    streamId, 
+    visitorId,
+    userName,
+    userEmail,
+  });
   const [selectedOptions, setSelectedOptions] = useState<string[]>([]);
 
 

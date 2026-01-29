@@ -14,6 +14,7 @@ interface VideoPlayerProps {
   isPrimarySync?: boolean; // Whether this video controls the session end
   onStreamEnd?: () => void;
   initialSeekTime?: number; // Optimistic initial position for late joiners
+  instructorName?: string;
   className?: string;
 }
 
@@ -28,6 +29,7 @@ export function VideoPlayer({
   isPrimarySync = false,
   onStreamEnd,
   initialSeekTime,
+  instructorName,
   className = '',
 }: VideoPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
@@ -136,6 +138,18 @@ export function VideoPlayer({
             Join Audio
           </Button>
         </div>
+      )}
+
+      {/* Instructor Name Label (Zoom style) - only if provided */}
+      {instructorName && (
+        <>
+          <div className="absolute inset-x-0 bottom-0 h-1/4 bg-linear-to-t from-black/50 to-transparent pointer-events-none z-20" />
+          <div className="absolute bottom-2 left-3 flex items-center z-30">
+            <span className="text-neutral-300 text-[10px] md:text-[11px] font-normal tracking-wide whitespace-nowrap">
+              {instructorName}
+            </span>
+          </div>
+        </>
       )}
     </div>
   );

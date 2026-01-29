@@ -21,6 +21,8 @@ interface StreamContainerProps {
   onToggleChat: () => void;
   onStreamEnd?: () => void;
   visitorId?: string;
+  userName?: string;
+  userEmail?: string;
   children?: ReactNode;
   initialSeekTime?: number; // Optimistic seek position for late joiners
 }
@@ -39,6 +41,8 @@ export function StreamContainer({
   isChatOpen,
   onStreamEnd,
   visitorId,
+  userName,
+  userEmail,
   initialSeekTime,
 }: StreamContainerProps) {
   // Toggle mute state
@@ -61,6 +65,7 @@ export function StreamContainer({
       onStreamEnd={onStreamEnd}
       initialSeekTime={initialSeekTime}
       className="w-full h-full"
+      instructorName={event.instructor || 'Ashish Shukla'}
     />
   );
 
@@ -96,6 +101,7 @@ export function StreamContainer({
             isPrimarySync={false} // Not the sync source
             initialSeekTime={initialSeekTime}
             className="w-full h-full md:rounded-xl overflow-hidden"
+            instructorName={!screenUrl ? (event.instructor || 'Ashish Shukla') : undefined}
           />
         </div>
       </div>
@@ -103,8 +109,8 @@ export function StreamContainer({
       {/* Right Column: Sidebar (Fixed width on Desktop, containing FaceCam and Chat) */}
       <div className={`
         contents 
-        md:flex md:flex-col md:border-t-0 md:border-l md:border-neutral-800 md:bg-black 
-        md:w-[320px] lg:md:w-[380px] 
+        md:flex md:flex-col md:border-t-0 md:border-l md:border-neutral-800 md:bg-neutral-900 
+        md:w-[350px] 
         md:flex-none md:h-full md:min-h-0
         ${!isChatOpen ? 'md:hidden' : ''} 
       `}>
@@ -112,14 +118,14 @@ export function StreamContainer({
         <div 
           onClick={() => setIsPipTop(!isPipTop)}
           className={`
-            bg-black overflow-hidden transition-all duration-300 ease-in-out
+            bg-black overflow-hidden transition-all duration-300 ease-in-out relative group
             
             /* Mobile Styles (Floating PiP in Grid Cell) */
             row-start-2 col-start-1 z-20 w-28 aspect-video rounded-lg shadow-lg border border-neutral-800 cursor-pointer justify-self-end m-3
             ${isPipTop ? 'self-start mt-3' : 'self-end mb-3'}
 
             /* Desktop Styles (Reset to Static Sidebar Block) */
-            md:static md:w-full md:aspect-video md:rounded-none md:shadow-none md:border-0 md:border-b md:border-neutral-800 md:z-auto md:cursor-default md:m-0 md:self-auto md:justify-self-auto
+            md:relative md:w-full md:aspect-video md:rounded-none md:shadow-none md:border-0 md:border-b md:border-neutral-800 md:z-auto md:cursor-default md:m-0 md:self-auto md:justify-self-auto
           `}
         >
           {FaceCamPlayer}
@@ -130,7 +136,7 @@ export function StreamContainer({
           {/* Poll Card (when active) */}
           {visitorId && (
             <div className="px-0 pb-0 shrink-0 border-t border-neutral-800 md:border-t-0">
-              <PollVoteCard streamId={event.id} visitorId={visitorId} />
+              <PollVoteCard streamId={event.id} visitorId={visitorId} userName={userName} userEmail={userEmail} />
             </div>
           )}
 

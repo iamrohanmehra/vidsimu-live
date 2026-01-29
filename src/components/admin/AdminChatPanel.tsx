@@ -1,5 +1,4 @@
 import { useState, useRef, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
 import { 
   MessageSquare, 
   Trash2, 
@@ -9,8 +8,13 @@ import {
   Pin,
   SendHorizontal,
   MoreVertical,
-  BellRing,
-  X
+  X,
+  Megaphone,
+  Zap,
+  Plus,
+  Pencil,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -24,13 +28,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import type { Message } from '@/types';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { useQuickReplyTemplates } from '@/hooks/useQuickReplyTemplates';
+import type { Message, QuickReplyTemplate } from '@/types';
 
 interface AdminChatPanelProps {
   messages: Message[];
   pinnedMessages: Message[];
   onSendMessage: (text: string, isAdmin: boolean, targetUser?: { id: string, email: string, name: string }) => Promise<void>;
-  onSendBroadcast: (text: string) => Promise<void>;
   onPinMessage: (messageId: string) => Promise<void>;
   onUnpinMessage: (messageId: string) => Promise<void>;
   onDeleteMessage: (messageId: string) => Promise<void>;
@@ -48,7 +54,6 @@ export function AdminChatPanel({
   messages,
   pinnedMessages,
   onSendMessage,
-  onSendBroadcast,
   onPinMessage,
   onUnpinMessage,
   onDeleteMessage,
@@ -56,11 +61,18 @@ export function AdminChatPanel({
   isSending,
 }: AdminChatPanelProps) {
   const [inputText, setInputText] = useState('');
-  const [isBroadcastMode, setIsBroadcastMode] = useState(false);
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   const [messageToDelete, setMessageToDelete] = useState<string | null>(null);
   const [isClearChatOpen, setIsClearChatOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Quick Reply Templates
+  const { templates: quickReplies, createTemplate, updateTemplate, deleteTemplate } = useQuickReplyTemplates();
+  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [isManagingTemplates, setIsManagingTemplates] = useState(false);
+  const [newTemplateText, setNewTemplateText] = useState('');
+  const [editingTemplate, setEditingTemplate] = useState<QuickReplyTemplate | null>(null);
+  const [editText, setEditText] = useState('');
 
   // Auto-scroll
   useEffect(() => {
@@ -70,12 +82,7 @@ export function AdminChatPanel({
   const handleSend = async () => {
     if (!inputText.trim() || isSending) return;
     
-    if (isBroadcastMode) {
-      await onSendBroadcast(inputText.trim());
-      setIsBroadcastMode(false);
-    } else {
-      await onSendMessage(inputText.trim(), true, replyTo || undefined);
-    }
+    await onSendMessage(inputText.trim(), true, replyTo || undefined);
     setInputText('');
     setReplyTo(null);
   };
@@ -110,55 +117,46 @@ export function AdminChatPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0a] text-white">
+    <div className="flex flex-col h-full bg-transparent text-white">
       {/* Header */}
-      <div className="px-5 py-3 border-b border-white/5 flex justify-between items-center bg-[#0a0a0a]/50 backdrop-blur-xl shrink-0">
-        <div className="flex items-center gap-2.5">
-          <MessageSquare className="w-5 h-5 text-white/80" />
-          <span className="font-semibold text-[15px] tracking-tight text-white/90">Chat</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setIsClearChatOpen(true)}
-            className="text-white/40 hover:text-destructive hover:bg-destructive/10 h-8 w-8 rounded-lg transition-colors"
-            title="Clear Chat"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-        </div>
+      <div className="h-14 border-b border-neutral-800 flex items-center justify-between px-6 bg-neutral-900/50 backdrop-blur-md shrink-0">
+        <h2 className="text-xs font-normal text-neutral-100 flex items-center gap-2">
+          <MessageSquare className="w-4 h-4" /> Chat
+        </h2>
+        <button
+          onClick={() => setIsClearChatOpen(true)}
+          className="p-2 hover:bg-neutral-800 rounded-lg transition-colors text-neutral-500 hover:text-destructive group/clear"
+          title="Clear all messages"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
       </div>
 
-      {/* Pinned Section */}
+      {/* Pinned Section / Broadcast Banner */}
       {pinnedMessages.length > 0 && (
-        <div className="border-b border-border px-4 py-3 bg-muted/50">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-              <span className="w-1.5 h-1.5 rounded-full bg-primary"></span>
-              Broadcast
-            </div>
-            <Button 
-              variant="ghost"
-              size="sm"
-              onClick={() => pinnedMessages.forEach(msg => onUnpinMessage(msg.id!))}
-              className="h-6 text-xs text-muted-foreground hover:text-destructive"
-            >
-              End
-            </Button>
+        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 flex items-start gap-3 shrink-0 relative group">
+          <div className="mt-0.5 shrink-0">
+            <Megaphone className="w-4 h-4 text-orange-500" />
           </div>
-          <div className="space-y-1 max-h-20 overflow-y-auto">
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Admin Announcement</p>
             {pinnedMessages.map(msg => (
-              <p key={msg.id} className="text-sm text-foreground">
+              <p key={msg.id} className="text-xs text-neutral-200 line-clamp-2 leading-relaxed">
                 {msg.message}
               </p>
             ))}
           </div>
+          <button 
+            onClick={() => pinnedMessages.forEach(msg => onUnpinMessage(msg.id!))}
+            className="p-1 hover:bg-orange-500/20 rounded transition-colors text-orange-500 shrink-0"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
       {/* Messages List */}
-      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 custom-scrollbar">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 bg-neutral-900/30 custom-scrollbar">
         {messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-white/20">
             <MessageSquare className="w-10 h-10 opacity-20 mb-3" />
@@ -173,8 +171,8 @@ export function AdminChatPanel({
             if (isJoinMessage(msg.message)) {
               return (
                 <div key={msg.id} className="py-1 px-4 text-center">
-                  <span className="text-[10px] text-neutral-500 font-medium bg-neutral-800/50 px-3 py-1 rounded-full border border-neutral-700/50 inline-flex items-center gap-2">
-                    <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] text-neutral-500 font-medium bg-neutral-800/50 px-3 py-1 rounded-full border border-neutral-700/50 inline-flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-amber-500 inline mr-0.5" />
                     <span className="text-neutral-300 font-normal">{msg.name}</span> joined
                   </span>
                 </div>
@@ -186,7 +184,12 @@ export function AdminChatPanel({
             return (
               <div 
                 key={msg.id} 
-                className="group relative flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 hover:bg-neutral-800/50 px-2 py-1 -mx-2 rounded-xl transition-colors cursor-pointer"
+                onClick={() => {
+                  if (!isAdmin && !isBroadcast) {
+                    setReplyTo({ id: msg.userId, email: msg.email, name: msg.name });
+                  }
+                }}
+                className={`group relative flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300 hover:bg-neutral-800/50 px-2 py-1 -mx-2 rounded-xl transition-colors ${!isAdmin && !isBroadcast ? 'cursor-pointer' : ''}`}
               >
                 {/* Avatar */}
                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-black shrink-0 border ring-1 transition-all duration-300 shadow-lg relative overflow-hidden ${
@@ -213,21 +216,16 @@ export function AdminChatPanel({
                 </div>
 
                 {/* Content */}
-                <div className="flex flex-col flex-1 min-w-0">
-                  <div className="flex items-baseline justify-between gap-2">
-                    <span className={`text-[11px] font-normal tracking-tight ${
-                      isAdmin ? 'text-primary' : 
-                      isBroadcast ? 'text-amber-400' : 
-                      'text-neutral-200'
-                    }`}>
-                      {msg.name} {isAdmin && <span className="text-[9px] bg-neutral-800 text-neutral-300 border border-neutral-700/50 px-1.5 py-0.5 rounded-full ml-1 font-medium not-italic">Host</span>}
+                <div className="flex-1">
+                  <div className="flex items-baseline justify-between">
+                    <span className={`font-normal text-[11px] ${isAdmin ? 'text-primary' : isBroadcast ? 'text-amber-400' : 'text-neutral-200'}`}>
+                      {msg.name}
                     </span>
                     <span className="text-[9px] text-neutral-500">
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
-                  
-                  <div className={`text-[14px] leading-relaxed wrap-break-word mt-0.5 transition-colors ${
+                  <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
                     isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
                     msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
                     'text-neutral-400 group-hover:text-neutral-300'
@@ -292,40 +290,170 @@ export function AdminChatPanel({
       </div>
 
       {/* Input Area */}
-      <div className="px-4 pb-4 bg-[#0a0a0a] border-t border-white/5 shrink-0">
-        {/* Reply/Broadcast Bar */}
-        {(replyTo || isBroadcastMode) && (
+      <div className="px-4 pb-4 bg-neutral-900 border-t border-neutral-800 shrink-0">
+        {/* Quick Replies Toggle */}
+        <button
+          onClick={() => setShowQuickReplies(!showQuickReplies)}
+          className="flex items-center gap-2 py-2 text-xs text-neutral-400 hover:text-neutral-200 transition-colors w-full"
+        >
+          {showQuickReplies ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+          <Zap className="w-3 h-3" />
+          <span>Quick Replies</span>
+          <span className="text-neutral-600 ml-1">({quickReplies.length})</span>
+        </button>
+
+        {/* Quick Replies Panel */}
+        {showQuickReplies && (
+          <div className="mb-3 p-3 bg-neutral-800/50 rounded-lg border border-neutral-700/50 animate-in slide-in-from-top-2 duration-200">
+            {isManagingTemplates ? (
+              // Management Mode
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-neutral-400 uppercase">Manage Templates</span>
+                  <Button variant="ghost" size="sm" onClick={() => setIsManagingTemplates(false)} className="h-6 px-2 text-xs">
+                    Done
+                  </Button>
+                </div>
+                
+                {/* Add New Template */}
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder="Add new quick reply..."
+                    value={newTemplateText}
+                    onChange={(e) => setNewTemplateText(e.target.value)}
+                    className="h-8 text-xs"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && newTemplateText.trim()) {
+                        createTemplate(newTemplateText);
+                        setNewTemplateText('');
+                      }
+                    }}
+                  />
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      if (newTemplateText.trim()) {
+                        createTemplate(newTemplateText);
+                        setNewTemplateText('');
+                      }
+                    }}
+                    disabled={!newTemplateText.trim()}
+                    className="h-8 px-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                </div>
+                
+                {/* Template List with Edit/Delete */}
+                <div className="space-y-1 max-h-32 overflow-y-auto">
+                  {quickReplies.map((template) => (
+                    <div key={template.id} className="flex items-center gap-2 group">
+                      {editingTemplate?.id === template.id ? (
+                        <>
+                          <Input
+                            type="text"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                            className="h-7 text-xs flex-1"
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && editText.trim()) {
+                                updateTemplate(template.id!, editText);
+                                setEditingTemplate(null);
+                              } else if (e.key === 'Escape') {
+                                setEditingTemplate(null);
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              updateTemplate(template.id!, editText);
+                              setEditingTemplate(null);
+                            }}
+                            className="h-7 w-7 p-0"
+                          >
+                            ✓
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setEditingTemplate(null)}
+                            className="h-7 w-7 p-0"
+                          >
+                            <X className="w-3 h-3" />
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <span className="text-xs text-neutral-300 flex-1 truncate">{template.text}</span>
+                          <button
+                            onClick={() => {
+                              setEditingTemplate(template);
+                              setEditText(template.text);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-neutral-300 transition-opacity"
+                          >
+                            <Pencil className="w-3 h-3" />
+                          </button>
+                          <button
+                            onClick={() => deleteTemplate(template.id!)}
+                            className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-destructive transition-opacity"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  ))}
+                  {quickReplies.length === 0 && (
+                    <p className="text-xs text-neutral-500 text-center py-2">No templates yet</p>
+                  )}
+                </div>
+              </div>
+            ) : (
+              // Quick Use Mode
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-medium text-neutral-400 uppercase">Quick Replies</span>
+                  <Button variant="ghost" size="sm" onClick={() => setIsManagingTemplates(true)} className="h-6 px-2 text-xs">
+                    Manage
+                  </Button>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {quickReplies.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => setInputText(template.text)}
+                      className="px-2.5 py-1 bg-neutral-700/50 hover:bg-neutral-700 border border-neutral-600/50 rounded-md text-xs text-neutral-300 hover:text-neutral-100 transition-colors truncate max-w-[150px]"
+                    >
+                      {template.text}
+                    </button>
+                  ))}
+                  {quickReplies.length === 0 && (
+                    <p className="text-xs text-neutral-500">Click "Manage" to add templates</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Reply Preview Bar */}
+        {replyTo && (
           <div className="flex items-center justify-between py-3 border-b border-neutral-800 mb-2 animate-in slide-in-from-bottom-1 duration-200">
             <div className="flex items-center gap-2 overflow-hidden">
               <Reply className="w-3.5 h-3.5 text-neutral-500 shrink-0" />
               <p className="text-xs text-neutral-400 truncate">
-                {isBroadcastMode ? (
-                  <span className="text-amber-500 font-bold uppercase tracking-widest text-[10px]">Broadcast Mode</span>
-                ) : (
-                  <>Replying to <span className="text-neutral-100 font-medium">{replyTo?.name}</span></>
-                )}
+                Replying to <span className="text-neutral-100 font-medium">{replyTo.name}</span>
               </p>
             </div>
             
             <div className="flex items-center gap-4 shrink-0">
-              <div 
-                className="flex items-center gap-2 cursor-pointer group" 
-                onClick={() => setIsBroadcastMode(!isBroadcastMode)}
-              >
-                <BellRing className={`w-3.5 h-3.5 transition-colors ${isBroadcastMode ? 'text-amber-500' : 'text-neutral-500 group-hover:text-neutral-300'}`} />
-                <span className={`text-[10px] uppercase font-bold tracking-widest transition-colors ${isBroadcastMode ? 'text-amber-500' : 'text-neutral-500 group-hover:text-neutral-300'}`}>
-                  Broadcast
-                </span>
-                <div className={`w-8 h-4.5 rounded-full relative transition-colors ${isBroadcastMode ? 'bg-amber-600' : 'bg-neutral-700'}`}>
-                  <div className={`absolute top-0.5 w-3.5 h-3.5 bg-white rounded-full transition-transform ${isBroadcastMode ? 'translate-x-4' : 'translate-x-0.5'}`}></div>
-                </div>
-              </div>
-              
               <button 
-                onClick={() => {
-                  setReplyTo(null);
-                  setIsBroadcastMode(false);
-                }}
+                onClick={() => setReplyTo(null)}
                 className="text-neutral-500 hover:text-neutral-200 transition-colors"
               >
                 <X className="w-4 h-4" />

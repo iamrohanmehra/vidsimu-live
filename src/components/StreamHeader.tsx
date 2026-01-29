@@ -49,7 +49,7 @@ export function StreamHeader({
   }, [elapsed]);
 
   return (
-    <header className="flex items-center justify-between px-4 py-3 bg-black border-b border-neutral-800">
+    <header className="flex items-center justify-between px-4 py-3 bg-neutral-900/50 backdrop-blur-md border-b border-neutral-800">
       {/* Title - Left side */}
       <h1 className="text-neutral-200 font-regular truncate max-w-xl text-lg flex items-center gap-2">
         <span className="truncate">{title}</span>
