@@ -17,12 +17,12 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useBroadcastTemplates } from '@/hooks/useBroadcastTemplates';
 import { useBannedUsers } from '@/hooks/useBannedUsers';
-import type { Event, BroadcastTemplate } from '@/types';
+import type { Event, BroadcastTemplate, Viewer } from '@/types';
 
 interface AdminSidebarProps {
   id: string;
   event: Event;
-  viewers: any[];
+  viewers: Viewer[];
   viewerCount: number;
   isPreviewMuted: boolean;
   setIsPreviewMuted: (muted: boolean) => void;
@@ -53,7 +53,13 @@ export function AdminSidebar({
 
   // Banned Users
   const { bannedUsers, banUser, unbanUser } = useBannedUsers({ sessionId: id });
+
+  // Use a stable fallback for stream start time if event.time is missing
+  const [mountTime] = useState(() => Date.now());
+  const streamStartTime = event.time ? new Date(event.time).getTime() : mountTime;
+
   return (
+
     <aside className="w-[350px] h-full border-l border-neutral-800 bg-neutral-900 flex flex-col shrink-0 relative transition-colors">
       {/* Instructor Video at the top */}
       <div className="aspect-video bg-neutral-800 relative overflow-hidden shrink-0 border-b border-neutral-800">
@@ -63,7 +69,7 @@ export function AdminSidebar({
           onMuteChange={setIsPreviewMuted}
           isFaceVideo={true}
           objectFit="cover"
-          streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+          streamStartTime={streamStartTime}
           className="w-full h-full"
           instructorName={event.instructor || 'Ashish Shukla'}
         />

@@ -19,14 +19,19 @@ interface UseBannedUsersOptions {
 
 export function useBannedUsers({ sessionId, enabled = true }: UseBannedUsersOptions) {
   const [bannedUsers, setBannedUsers] = useState<BannedUser[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(enabled && !!sessionId);
+
+  // Sync state with props during render to avoid cascading renders in useEffect
+  const [prevSession, setPrevSession] = useState({ sessionId, enabled });
+  if (prevSession.sessionId !== sessionId || prevSession.enabled !== enabled) {
+    setPrevSession({ sessionId, enabled });
+    setIsLoading(enabled && !!sessionId);
+    setBannedUsers([]);
+  }
 
   // Listen for banned users in this session
   useEffect(() => {
-    if (!enabled || !sessionId) {
-      setIsLoading(false);
-      return;
-    }
+    if (!enabled || !sessionId) return;
 
     const q = query(bannedUsersCollection, where('sessionId', '==', sessionId));
     

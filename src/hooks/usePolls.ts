@@ -38,6 +38,13 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
   const [votersByOption, setVotersByOption] = useState<VotersByOption>({});
   const [isLoading, setIsLoading] = useState(true);
 
+  // Sync state with activePoll during render to avoid cascading renders in useEffect
+  const [prevPollId, setPrevPollId] = useState<string | undefined>(activePoll?.id);
+  if (activePoll?.id !== prevPollId) {
+    setPrevPollId(activePoll?.id);
+    setVotersByOption({});
+  }
+
   // Subscribe to all polls for this stream
   useEffect(() => {
     if (!enabled || !streamId) return;
@@ -80,10 +87,7 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
 
   // Subscribe to votes for active poll to get voter details
   useEffect(() => {
-    if (!activePoll?.id) {
-      setVotersByOption({});
-      return;
-    }
+    if (!activePoll?.id) return;
 
     const q = query(
       pollVotesCollection,
@@ -312,7 +316,7 @@ export function useActivePoll({ streamId, visitorId, userName, userEmail, enable
     } finally {
       setIsSubmitting(false);
     }
-  }, [activePoll?.id, visitorId, hasVoted, isSubmitting]);
+  }, [activePoll?.id, visitorId, userName, userEmail, hasVoted, isSubmitting]);
 
   return {
     activePoll,
