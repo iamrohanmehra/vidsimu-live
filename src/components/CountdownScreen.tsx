@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import type { Event } from '@/types';
 import { useBackgroundMusic } from '@/hooks/useBackgroundMusic';
 import { useCurrentViewers } from '@/hooks/useCurrentViewers';
-import { ModeToggle } from '@/components/mode-toggle';
 import { cn } from '@/lib/utils';
 
 interface CountdownScreenProps {
@@ -70,7 +69,7 @@ export function CountdownScreen({ event, targetTime, onCountdownComplete, isEmbe
     )}>
       {!isEmbedded && (
         <div className="absolute top-4 right-4 z-50">
-          <ModeToggle />
+          
         </div>
       )}
       
