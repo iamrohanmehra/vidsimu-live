@@ -22,12 +22,20 @@ import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminChatPanel } from '@/components/admin/AdminChatPanel';
 import { ExportSessionModal } from '@/components/admin/ExportSessionModal';
 import { TerminateSessionModal } from '@/components/admin/TerminateSessionModal';
+import { ReactivateSessionModal } from '@/components/admin/ReactivateSessionModal';
 import { useSessionExport } from '@/hooks/useSessionExport';
 import { useSessionTermination } from '@/hooks/useSessionTermination';
 import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { CountdownScreen } from '@/components/CountdownScreen';
-import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound, Power } from 'lucide-react';
+import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound, Power, LockOpen, MoreVertical } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu"
 import {
   Tooltip,
   TooltipContent,
@@ -48,6 +56,7 @@ export function AdminLiveSessionPage() {
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
+  const [isReactivateModalOpen, setIsReactivateModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const { viewerCount, viewers } = useCurrentViewers({
@@ -61,7 +70,7 @@ export function AdminLiveSessionPage() {
     viewers,
   });
 
-  const { terminateSession, isTerminating, isTerminated } = useSessionTermination({
+  const { terminateSession, isTerminating, isTerminated, reactivateSession, isReactivating } = useSessionTermination({
     sessionId: id || '',
     enabled: !!id,
   });
@@ -314,20 +323,7 @@ export function AdminLiveSessionPage() {
                     )}
                   </h1>
                   
-                  <div className="font-mono text-[10px] text-neutral-500 bg-neutral-800/50 border border-neutral-800 px-2 py-0.5 rounded-md flex items-center gap-2 group shrink-0 transition-colors hover:border-neutral-700">
-                    <span className="truncate max-w-[80px]">{id}</span>
-                    <button 
-                      onClick={handleCopyId}
-                      className="hover:text-neutral-300 transition-colors focus:outline-none"
-                      title="Copy Session ID"
-                    >
-                      {isCopied ? (
-                        <Check className="w-3 h-3 text-emerald-500" />
-                      ) : (
-                        <Copy className="w-3 h-3 text-neutral-600 group-hover:text-neutral-400" />
-                      )}
-                    </button>
-                  </div>
+
 
                   {streamStatus.status === 'live' && (
                     <span className="px-2 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold uppercase tracking-wider animate-pulse flex items-center gap-1.5 shrink-0" id="live-indicator">
@@ -346,8 +342,6 @@ export function AdminLiveSessionPage() {
                     <UsersRound className="w-4 h-4 text-neutral-500" />
                     <p className="text-sm font-bold tabular-nums text-neutral-200" id="viewer-count">{viewerCount}</p>
                   </div>
-                  
-                  <div className="h-4 w-px bg-neutral-800" />
                   
                   <div className="text-right min-w-[80px]">
                     {streamStatus.status === 'unscheduled' && (
@@ -378,85 +372,93 @@ export function AdminLiveSessionPage() {
                   </div>
                 </div>
 
-                <div className="h-4 w-px bg-neutral-800" />
-
-                {/* Header Actions */}
-                <div className="flex items-center gap-1">
+                {/* Header Actions - Shadcn Dropdown */}
+                <DropdownMenu>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsPreviewMuted(!isPreviewMuted)}
-                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
-                        id="toggle-preview-mute"
-                      >
-                        {isPreviewMuted ? (
-                          <VolumeX className="h-4 w-4" />
-                        ) : (
-                          <Volume2 className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 flex shrink-0"
+                          id="admin-actions-dropdown"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
                     </TooltipTrigger>
                     <TooltipContent>
-                      <p>{isPreviewMuted ? 'Unmute Preview' : 'Mute Preview'}</p>
+                      <p>More Actions</p>
                     </TooltipContent>
                   </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => window.open(`/preview/${id}`, '_blank')}
-                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800"
-                        id="open-preview"
-                      >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Open Public Preview</p>
-                    </TooltipContent>
-                  </Tooltip>
+                  <DropdownMenuContent align="end" className="w-56 bg-neutral-900 border-neutral-800">
+                    <DropdownMenuItem 
+                      onClick={() => setIsPreviewMuted(!isPreviewMuted)}
+                      className="text-neutral-300 focus:text-white focus:bg-neutral-800 cursor-pointer flex items-center gap-2"
+                    >
+                      {isPreviewMuted ? (
+                        <VolumeX className="h-4 w-4 text-neutral-500" />
+                      ) : (
+                        <Volume2 className="h-4 w-4 text-neutral-500" />
+                      )}
+                      <span>{isPreviewMuted ? 'Unmute' : 'Mute'} Preview</span>
+                    </DropdownMenuItem>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsExportModalOpen(true)}
-                        disabled={streamStatus.status !== 'ended'}
-                        className="h-8 w-8 text-neutral-400 hover:text-neutral-100 hover:bg-neutral-800 disabled:opacity-30 disabled:hover:bg-transparent"
-                        id="open-export-modal"
-                      >
-                        <Download className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{streamStatus.status !== 'ended' ? 'Export disabled until session ends' : 'Export Session Data'}</p>
-                    </TooltipContent>
-                  </Tooltip>
+                    <DropdownMenuItem 
+                      onClick={() => window.open(`/preview/${id}`, '_blank')}
+                      className="text-neutral-300 focus:text-white focus:bg-neutral-800 cursor-pointer flex items-center gap-2"
+                    >
+                      <ExternalLink className="h-4 w-4 text-neutral-500" />
+                      <span>Open Preview</span>
+                    </DropdownMenuItem>
 
-                  {/* Terminate Session Button */}
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setIsTerminateModalOpen(true)}
-                        disabled={streamStatus.status !== 'live' || isTerminated}
-                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-30 disabled:hover:bg-transparent"
-                        id="terminate-session-btn"
+                    <DropdownMenuItem 
+                      onClick={() => setIsExportModalOpen(true)}
+                      disabled={streamStatus.status !== 'ended'}
+                      className="text-neutral-300 focus:text-white focus:bg-neutral-800 cursor-pointer flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4 text-neutral-500" />
+                      <span>Export Session</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                      onClick={handleCopyId}
+                      className="text-neutral-300 focus:text-white focus:bg-neutral-800 cursor-pointer flex items-center gap-2"
+                    >
+                      {isCopied ? (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      ) : (
+                        <Copy className="h-4 w-4 text-neutral-500" />
+                      )}
+                      <span>{isCopied ? 'Copied ID' : 'Copy Session ID'}</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuSeparator className="bg-neutral-800" />
+
+                    {/* Terminate Session Button */}
+                    <DropdownMenuItem 
+                      onClick={() => setIsTerminateModalOpen(true)}
+                      disabled={streamStatus.status !== 'live' || isTerminated}
+                      className="text-rose-400 focus:text-rose-100 focus:bg-rose-500/20 cursor-pointer flex items-center gap-2"
+                    >
+                      <Power className="h-4 w-4" />
+                      <span>Terminate Session</span>
+                    </DropdownMenuItem>
+
+                    {/* Reactivate Session (Unlock) - Only visible if terminated */}
+                    {isTerminated && (
+                      <DropdownMenuItem 
+                        onClick={() => setIsReactivateModalOpen(true)}
+                        disabled={isReactivating}
+                        className="text-emerald-400 focus:text-emerald-100 focus:bg-emerald-500/20 cursor-pointer flex items-center gap-2"
                       >
-                        <Power className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>{isTerminated ? 'Session already terminated' : streamStatus.status !== 'live' ? 'Only available during live session' : 'Terminate Session'}</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
+                        <LockOpen className={`h-4 w-4 ${isReactivating ? 'animate-spin' : ''}`} />
+                        <span>Reactivate Session</span>
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
             </header>
 
@@ -575,6 +577,14 @@ export function AdminLiveSessionPage() {
             />
           </div>
         </div>
+
+        {/* Reactivate Session Modal */}
+        <ReactivateSessionModal
+          isOpen={isReactivateModalOpen}
+          onClose={() => setIsReactivateModalOpen(false)}
+          onConfirm={reactivateSession}
+          isReactivating={isReactivating}
+        />
 
         {/* Export Session Modal */}
         <ExportSessionModal

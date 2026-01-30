@@ -7,7 +7,10 @@ import {
   serverTimestamp,
   Timestamp,
   limit,
+  deleteDoc,
+  doc,
 } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 import { terminatedSessionsCollection } from '@/lib/collections';
 import type { TerminatedSession } from '@/types';
 
@@ -20,6 +23,7 @@ export function useSessionTermination({ sessionId, enabled = true }: UseSessionT
   const [terminationData, setTerminationData] = useState<TerminatedSession | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isTerminating, setIsTerminating] = useState(false);
+  const [isReactivating, setIsReactivating] = useState(false);
 
   // Listen for termination status
   useEffect(() => {
@@ -79,11 +83,30 @@ export function useSessionTermination({ sessionId, enabled = true }: UseSessionT
     }
   }, [sessionId]);
 
+  // Reactivate (Unlock) session
+  const reactivateSession = useCallback(async () => {
+    if (!sessionId || !terminationData?.id) return false;
+
+    setIsReactivating(true);
+    try {
+      await deleteDoc(doc(db, 'terminated_sessions', terminationData.id));
+      console.log('[SessionTermination] Session reactivated:', sessionId);
+      return true;
+    } catch (error) {
+      console.error('[SessionTermination] Error reactivating session:', error);
+      return false;
+    } finally {
+      setIsReactivating(false);
+    }
+  }, [sessionId, terminationData]);
+
   return {
     isTerminated: !!terminationData,
     terminationData,
     terminateSession,
+    reactivateSession,
     isLoading,
     isTerminating,
+    isReactivating,
   };
 }
