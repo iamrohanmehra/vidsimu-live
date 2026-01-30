@@ -28,8 +28,10 @@ export function useBroadcastTemplates() {
         const data = docSnap.data();
         items.push({
           id: docSnap.id,
-          text: data.text,
-          link: data.link,
+          text: data.text || '',
+          keyword: data.keyword || '', // Support legacy templates without keyword
+          link: data.link || undefined,
+          showQrCode: data.showQrCode || false,
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
         });
       });
@@ -43,14 +45,23 @@ export function useBroadcastTemplates() {
     return () => unsubscribe();
   }, []);
 
-  // Create a new template
-  const createTemplate = useCallback(async (text: string, link?: string) => {
-    if (!text.trim()) return;
+  // Create a new template with all fields
+  const createTemplate = useCallback(async (
+    text: string, 
+    keyword: string, 
+    link?: string,
+    showQrCode?: boolean
+  ) => {
+    if (!keyword.trim()) return;
+    // Allow empty text if link is provided
+    if (!text.trim() && !link?.trim()) return;
     
     try {
       await addDoc(broadcastTemplatesCollection, {
         text: text.trim(),
+        keyword: keyword.trim().toLowerCase().replace(/\s+/g, ''), // Normalize keyword
         link: link?.trim() || undefined,
+        showQrCode: showQrCode || false,
         createdAt: serverTimestamp(),
       });
     } catch (error) {
@@ -59,14 +70,19 @@ export function useBroadcastTemplates() {
   }, []);
 
   // Update an existing template
-  const updateTemplate = useCallback(async (id: string, updates: { text?: string; link?: string }) => {
+  const updateTemplate = useCallback(async (
+    id: string, 
+    updates: { text?: string; keyword?: string; link?: string; showQrCode?: boolean }
+  ) => {
     if (!id) return;
     
     try {
       const docRef = doc(db, 'broadcast_templates', id);
-      const updateData: Record<string, string | undefined> = {};
+      const updateData: Record<string, string | boolean | undefined> = {};
       if (updates.text !== undefined) updateData.text = updates.text.trim();
+      if (updates.keyword !== undefined) updateData.keyword = updates.keyword.trim().toLowerCase().replace(/\s+/g, '');
       if (updates.link !== undefined) updateData.link = updates.link?.trim() || undefined;
+      if (updates.showQrCode !== undefined) updateData.showQrCode = updates.showQrCode;
       
       await updateDoc(docRef, updateData);
     } catch (error) {
@@ -93,3 +109,4 @@ export function useBroadcastTemplates() {
     deleteTemplate,
   };
 }
+

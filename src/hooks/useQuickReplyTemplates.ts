@@ -29,6 +29,7 @@ export function useQuickReplyTemplates() {
         items.push({
           id: docSnap.id,
           text: data.text,
+          keyword: data.keyword || '', // Support legacy templates without keyword
           createdAt: data.createdAt instanceof Timestamp ? data.createdAt.toDate() : new Date(),
         });
       });
@@ -42,13 +43,14 @@ export function useQuickReplyTemplates() {
     return () => unsubscribe();
   }, []);
 
-  // Create a new template
-  const createTemplate = useCallback(async (text: string) => {
-    if (!text.trim()) return;
+  // Create a new template with keyword
+  const createTemplate = useCallback(async (text: string, keyword: string) => {
+    if (!text.trim() || !keyword.trim()) return;
     
     try {
       await addDoc(quickReplyTemplatesCollection, {
         text: text.trim(),
+        keyword: keyword.trim().toLowerCase().replace(/\s+/g, ''), // Normalize keyword
         createdAt: serverTimestamp(),
       });
     } catch (error) {
@@ -57,12 +59,15 @@ export function useQuickReplyTemplates() {
   }, []);
 
   // Update an existing template
-  const updateTemplate = useCallback(async (id: string, text: string) => {
-    if (!id || !text.trim()) return;
+  const updateTemplate = useCallback(async (id: string, text: string, keyword: string) => {
+    if (!id || !text.trim() || !keyword.trim()) return;
     
     try {
       const docRef = doc(db, 'quick_reply_templates', id);
-      await updateDoc(docRef, { text: text.trim() });
+      await updateDoc(docRef, { 
+        text: text.trim(),
+        keyword: keyword.trim().toLowerCase().replace(/\s+/g, ''), // Normalize keyword
+      });
     } catch (error) {
       console.error('[QuickReplyTemplates] Error updating template:', error);
     }
@@ -87,3 +92,4 @@ export function useQuickReplyTemplates() {
     deleteTemplate,
   };
 }
+

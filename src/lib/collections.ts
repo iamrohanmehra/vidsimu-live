@@ -1,7 +1,7 @@
 import { collection, type CollectionReference, type DocumentData } from 'firebase/firestore';
 import { ref, type DatabaseReference } from 'firebase/database';
 import { db, rtdb } from './firebase';
-import type { Message, Poll, PollVote, PollTemplate, QuickReplyTemplate, BroadcastTemplate, BannedUser } from '@/types';
+import type { Message, Poll, PollVote, PollTemplate, QuickReplyTemplate, BroadcastTemplate, BannedUser, TerminatedSession } from '@/types';
 
 // Firestore Collections
 export const messagesCollection = collection(db, 'messages') as CollectionReference<Message, DocumentData>;
@@ -11,6 +11,7 @@ export const pollTemplatesCollection = collection(db, 'poll_templates') as Colle
 export const quickReplyTemplatesCollection = collection(db, 'quick_reply_templates') as CollectionReference<QuickReplyTemplate, DocumentData>;
 export const broadcastTemplatesCollection = collection(db, 'broadcast_templates') as CollectionReference<BroadcastTemplate, DocumentData>;
 export const bannedUsersCollection = collection(db, 'banned_users') as CollectionReference<BannedUser, DocumentData>;
+export const terminatedSessionsCollection = collection(db, 'terminated_sessions') as CollectionReference<TerminatedSession, DocumentData>;
 
 // Realtime Database References
 export function presenceRef(streamId: string, clientId: string): DatabaseReference {

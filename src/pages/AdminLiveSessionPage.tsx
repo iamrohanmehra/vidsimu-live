@@ -21,11 +21,13 @@ import { messagesCollection } from '@/lib/collections';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminChatPanel } from '@/components/admin/AdminChatPanel';
 import { ExportSessionModal } from '@/components/admin/ExportSessionModal';
+import { TerminateSessionModal } from '@/components/admin/TerminateSessionModal';
 import { useSessionExport } from '@/hooks/useSessionExport';
+import { useSessionTermination } from '@/hooks/useSessionTermination';
 import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { CountdownScreen } from '@/components/CountdownScreen';
-import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound } from 'lucide-react';
+import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound, Power } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -45,6 +47,7 @@ export function AdminLiveSessionPage() {
   const [broadcastText, setBroadcastText] = useState('');
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isTerminateModalOpen, setIsTerminateModalOpen] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
 
   const { viewerCount, viewers } = useCurrentViewers({
@@ -56,6 +59,11 @@ export function AdminLiveSessionPage() {
     streamId: id || '',
     event,
     viewers,
+  });
+
+  const { terminateSession, isTerminating, isTerminated } = useSessionTermination({
+    sessionId: id || '',
+    enabled: !!id,
   });
 
 
@@ -149,8 +157,13 @@ export function AdminLiveSessionPage() {
     } finally { setIsSending(false); }
   }, [id]);
 
-  const handleSendBroadcast = useCallback(async (text: string) => {
-    if (!id || !text.trim()) return;
+  const handleSendBroadcast = useCallback(async (
+    text: string,
+    options?: { link?: string; showQrCode?: boolean }
+  ) => {
+    if (!id) return;
+    // Allow broadcast with just link or just text
+    if (!text.trim() && !options?.link?.trim()) return;
 
     // Strict Limit: Only one broadcast allowed
     if (pinnedMessages.length > 0) {
@@ -173,6 +186,9 @@ export function AdminLiveSessionPage() {
         isPinned: true,
         pinnedAt: serverTimestamp(),
         pinnedBy: 'admin',
+        // Broadcast-specific fields
+        broadcastLink: options?.link?.trim() || undefined,
+        showQrCode: options?.showQrCode || false,
       });
     } finally { setIsSending(false); }
   }, [id, pinnedMessages.length]);
@@ -279,12 +295,12 @@ export function AdminLiveSessionPage() {
     <TooltipProvider>
       <div className="min-h-screen bg-background text-foreground">
         {/* Main Layout (Sidebars + Main Content) */}
-        <div className="h-screen flex overflow-hidden">
+        <div className="h-screen flex flex-col lg:flex-row overflow-hidden">
           
           {/* Main Content Area (Header + Video) */}
           <div className="flex-1 flex flex-col min-w-0 h-full">
             {/* Header */}
-            <header className="h-14 border-b border-neutral-800 flex items-center px-6 bg-neutral-900/50 backdrop-blur-md shrink-0 justify-between gap-4">
+            <header className="min-h-14 h-auto lg:h-14 py-2 lg:py-0 border-b border-neutral-800 flex flex-wrap lg:flex-nowrap items-center px-4 lg:px-6 bg-neutral-900/50 backdrop-blur-md shrink-0 justify-between gap-3 lg:gap-4 order-first">
               {/* Left Side: Title & Info */}
               <div className="flex items-center gap-4 min-w-0 flex-1">
                 <div className="flex items-center gap-3 min-w-0">
@@ -421,6 +437,25 @@ export function AdminLiveSessionPage() {
                       <p>{streamStatus.status !== 'ended' ? 'Export disabled until session ends' : 'Export Session Data'}</p>
                     </TooltipContent>
                   </Tooltip>
+
+                  {/* Terminate Session Button */}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setIsTerminateModalOpen(true)}
+                        disabled={streamStatus.status !== 'live' || isTerminated}
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-30 disabled:hover:bg-transparent"
+                        id="terminate-session-btn"
+                      >
+                        <Power className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{isTerminated ? 'Session already terminated' : streamStatus.status !== 'live' ? 'Only available during live session' : 'Terminate Session'}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
               </div>
             </header>
@@ -442,6 +477,21 @@ export function AdminLiveSessionPage() {
                       instructorName={!event.screenUrl ? (event.instructor || 'Ashish Shukla') : undefined}
                     />
                   </div>
+
+                  {/* Mobile Face Cam PIP (only if screen share is active) */}
+                  {event.screenUrl && (
+                    <div className="absolute top-4 right-4 w-24 sm:w-32 aspect-video bg-black border border-white/10 rounded-lg overflow-hidden shadow-lg z-10 lg:hidden">
+                      <VideoPlayer
+                        url={event.url}
+                        muted={true}
+                        onMuteChange={() => {}}
+                        isFaceVideo={true}
+                        objectFit="cover"
+                        streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                        className="w-full h-full"
+                      />
+                    </div>
+                  )}
                 </div>
               ) : streamStatus.status === 'ended' ? (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -468,32 +518,62 @@ export function AdminLiveSessionPage() {
             </div>
           </div>
 
-          {/* Sidebars (Full Height) */}
-          <aside id="sidebar-messages" className="w-[350px] h-full border-l border-neutral-800 bg-neutral-900 flex flex-col shrink-0 relative transition-all duration-300">
-            <AdminChatPanel
-              messages={messages}
-              pinnedMessages={pinnedMessages}
-              onSendMessage={handleSendMessage}
-              onPinMessage={handlePinMessage}
-              onUnpinMessage={handleUnpinMessage}
-              onDeleteMessage={handleDeleteMessage}
-              onClearChat={handleClearChat}
+          {/* Desktop Sidebars */}
+          <div className="hidden lg:flex h-full shrink-0">
+            <aside id="sidebar-messages" className="w-[350px] h-full border-l border-neutral-800 bg-neutral-900 flex flex-col relative transition-all duration-300">
+              <AdminChatPanel
+                messages={messages}
+                pinnedMessages={pinnedMessages}
+                onSendMessage={handleSendMessage}
+                onPinMessage={handlePinMessage}
+                onUnpinMessage={handleUnpinMessage}
+                onDeleteMessage={handleDeleteMessage}
+                onClearChat={handleClearChat}
+                isSending={isSending}
+              />
+            </aside>
+            <AdminSidebar
+              id={id!}
+              event={event}
+              viewers={viewers}
+              viewerCount={viewerCount}
+              isPreviewMuted={isPreviewMuted}
+              setIsPreviewMuted={setIsPreviewMuted}
+              broadcastText={broadcastText}
+              setBroadcastText={setBroadcastText}
+              handleSendBroadcast={handleSendBroadcast}
               isSending={isSending}
             />
-          </aside>
+          </div>
 
-          <AdminSidebar
-            id={id!}
-            event={event}
-            viewers={viewers}
-            viewerCount={viewerCount}
-            isPreviewMuted={isPreviewMuted}
-            setIsPreviewMuted={setIsPreviewMuted}
-            broadcastText={broadcastText}
-            setBroadcastText={setBroadcastText}
-            handleSendBroadcast={handleSendBroadcast}
-            isSending={isSending}
-          />
+          {/* Mobile Unified Admin Panel */}
+          <div className="flex lg:hidden flex-1 min-h-0">
+            <AdminSidebar
+              id={id!}
+              event={event}
+              viewers={viewers}
+              viewerCount={viewerCount}
+              isPreviewMuted={isPreviewMuted}
+              setIsPreviewMuted={setIsPreviewMuted}
+              broadcastText={broadcastText}
+              setBroadcastText={setBroadcastText}
+              handleSendBroadcast={handleSendBroadcast}
+              isSending={isSending}
+              hideVideo={true}
+              chatPanel={
+                <AdminChatPanel
+                  messages={messages}
+                  pinnedMessages={pinnedMessages}
+                  onSendMessage={handleSendMessage}
+                  onPinMessage={handlePinMessage}
+                  onUnpinMessage={handleUnpinMessage}
+                  onDeleteMessage={handleDeleteMessage}
+                  onClearChat={handleClearChat}
+                  isSending={isSending}
+                />
+              }
+            />
+          </div>
         </div>
 
         {/* Export Session Modal */}
@@ -503,6 +583,16 @@ export function AdminLiveSessionPage() {
           onExport={exportSession}
           isExporting={isExporting}
           defaultTitle={event?.title || ''}
+        />
+
+        {/* Terminate Session Modal */}
+        <TerminateSessionModal
+          isOpen={isTerminateModalOpen}
+          onClose={() => setIsTerminateModalOpen(false)}
+          onConfirm={async (message) => {
+            await terminateSession(message);
+          }}
+          isTerminating={isTerminating}
         />
       </div>
     </TooltipProvider>

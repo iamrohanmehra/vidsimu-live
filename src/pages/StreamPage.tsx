@@ -14,9 +14,11 @@ import { StreamContainer } from '@/components/StreamContainer';
 import { CountdownScreen } from '@/components/CountdownScreen';
 import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { SessionEndedScreen } from '@/components/SessionEndedScreen';
+import { SessionTerminatedScreen } from '@/components/SessionTerminatedScreen';
 import { SessionLimitScreen } from '@/components/SessionLimitScreen';
 import { SessionNotScheduledScreen } from '@/components/SessionNotScheduledScreen';
 import { SessionBannedScreen } from '@/components/SessionBannedScreen';
+import { useSessionTermination } from '@/hooks/useSessionTermination';
 import type { Event, User, StreamState, Message } from '@/types';
 
 export function StreamPage() {
@@ -85,6 +87,12 @@ export function StreamPage() {
     if (!user?.email) return false;
     return isUserBanned(user.email);
   }, [user, isUserBanned]);
+
+  // Check for session termination
+  const { isTerminated, terminationData } = useSessionTermination({
+    sessionId: uuid || '',
+    enabled: !!uuid,
+  });
 
   // Combine messages for display
   const allMessages = useMemo(() => {
@@ -279,6 +287,11 @@ export function StreamPage() {
   // Unavailable state
   if (streamState === 'unavailable' && event) {
     return <SessionNotScheduledScreen />;
+  }
+
+  // Session terminated by admin
+  if (isTerminated && terminationData) {
+    return <SessionTerminatedScreen terminationData={terminationData} />;
   }
 
   // Ended state

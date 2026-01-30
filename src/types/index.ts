@@ -38,6 +38,9 @@ export interface Message {
   isPinned?: boolean;
   pinnedAt?: Date;
   pinnedBy?: string;
+  // Broadcast-specific fields
+  broadcastLink?: string;
+  showQrCode?: boolean;
 }
 
 // Presence data in RTDB
@@ -203,6 +206,7 @@ export interface SessionExport {
 export interface QuickReplyTemplate {
   id?: string;
   text: string;
+  keyword: string; // Short keyword for slash command (e.g., "welcome", "thanks")
   createdAt: Date;
 }
 
@@ -210,8 +214,23 @@ export interface QuickReplyTemplate {
 export interface BroadcastTemplate {
   id?: string;
   text: string;
+  keyword: string; // Short keyword for slash command (e.g., "break", "info")
   link?: string;
+  showQrCode?: boolean;
   createdAt: Date;
+}
+
+// ============================================
+// Session Termination Types
+// ============================================
+
+// Terminated Session record (for manual session termination)
+export interface TerminatedSession {
+  id?: string;
+  sessionId: string;
+  message: string;
+  terminatedAt: Date;
+  terminatedBy: string;
 }
 
 // ============================================

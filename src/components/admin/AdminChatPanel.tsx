@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 
   Trash2, 
@@ -31,6 +31,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useQuickReplyTemplates } from '@/hooks/useQuickReplyTemplates';
+import { useBroadcastTemplates } from '@/hooks/useBroadcastTemplates';
+import { SlashCommandDropdown } from '@/components/admin/SlashCommandDropdown';
+import { BroadcastMessage } from '@/components/BroadcastMessage';
 import type { Message, QuickReplyTemplate } from '@/types';
 
 interface AdminChatPanelProps {
@@ -68,11 +71,19 @@ export function AdminChatPanel({
   
   // Quick Reply Templates
   const { templates: quickReplies, createTemplate, updateTemplate, deleteTemplate } = useQuickReplyTemplates();
+  const { templates: broadcastTemplates } = useBroadcastTemplates();
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [isManagingTemplates, setIsManagingTemplates] = useState(false);
   const [newTemplateText, setNewTemplateText] = useState('');
+  const [newTemplateKeyword, setNewTemplateKeyword] = useState('');
   const [editingTemplate, setEditingTemplate] = useState<QuickReplyTemplate | null>(null);
   const [editText, setEditText] = useState('');
+  const [editKeyword, setEditKeyword] = useState('');
+
+  // Slash Command State
+  const [showSlashCommand, setShowSlashCommand] = useState(false);
+  const [slashFilterText, setSlashFilterText] = useState('');
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
 
   // Auto-scroll
   useEffect(() => {
@@ -82,12 +93,73 @@ export function AdminChatPanel({
   const handleSend = async () => {
     if (!inputText.trim() || isSending) return;
     
+    // Close slash command if open
+    setShowSlashCommand(false);
+    
     await onSendMessage(inputText.trim(), true, replyTo || undefined);
     setInputText('');
     setReplyTo(null);
   };
 
+  // Get filtered templates for slash command
+  const getFilteredTemplates = useCallback(() => {
+    return [
+      ...quickReplies.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase())),
+      ...broadcastTemplates.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase())),
+    ];
+  }, [quickReplies, broadcastTemplates, slashFilterText]);
+
+  // Handle input change with slash command detection
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setInputText(value);
+
+    // Check for slash command at the start of input
+    if (value.startsWith('/')) {
+      setShowSlashCommand(true);
+      setSlashFilterText(value.slice(1)); // Remove the slash
+      setSlashSelectedIndex(0);
+    } else {
+      setShowSlashCommand(false);
+      setSlashFilterText('');
+    }
+  }, []);
+
+  // Handle slash command selection
+  const handleSlashSelect = useCallback((text: string) => {
+    setInputText(text);
+    setShowSlashCommand(false);
+    setSlashFilterText('');
+  }, []);
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Handle slash command navigation
+    if (showSlashCommand) {
+      const filtered = getFilteredTemplates();
+      
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSlashSelectedIndex(prev => Math.min(prev + 1, filtered.length - 1));
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSlashSelectedIndex(prev => Math.max(prev - 1, 0));
+        return;
+      }
+      if (e.key === 'Enter' && filtered.length > 0) {
+        e.preventDefault();
+        handleSlashSelect(filtered[slashSelectedIndex].text);
+        return;
+      }
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowSlashCommand(false);
+        return;
+      }
+    }
+
+    // Normal enter to send
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -225,13 +297,25 @@ export function AdminChatPanel({
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
-                  <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
-                    isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
-                    msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
-                    'text-neutral-400 group-hover:text-neutral-300'
-                  }`}>
-                    {renderMessageWithLinks(msg.message, isAdmin || isBroadcast)}
-                  </div>
+                  {/* Broadcast with link/QR support */}
+                  {isBroadcast && (msg.broadcastLink || msg.showQrCode) ? (
+                    <div className="mt-1">
+                      <BroadcastMessage 
+                        text={msg.message} 
+                        link={msg.broadcastLink}
+                        showQrCode={msg.showQrCode}
+                        compact={true}
+                      />
+                    </div>
+                  ) : (
+                    <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
+                      isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
+                      msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
+                      'text-neutral-400 group-hover:text-neutral-300'
+                    }`}>
+                      {renderMessageWithLinks(msg.message, isAdmin || isBroadcast)}
+                    </div>
+                  )}
 
                   {/* Private Reply Indicator */}
                   {msg.messageType === 'private' && msg.targetUserName && (
@@ -316,49 +400,68 @@ export function AdminChatPanel({
                 </div>
                 
                 {/* Add New Template */}
-                <div className="flex gap-2">
-                  <Input
-                    type="text"
-                    placeholder="Add new quick reply..."
-                    value={newTemplateText}
-                    onChange={(e) => setNewTemplateText(e.target.value)}
-                    className="h-8 text-xs"
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && newTemplateText.trim()) {
-                        createTemplate(newTemplateText);
-                        setNewTemplateText('');
-                      }
-                    }}
-                  />
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      if (newTemplateText.trim()) {
-                        createTemplate(newTemplateText);
-                        setNewTemplateText('');
-                      }
-                    }}
-                    disabled={!newTemplateText.trim()}
-                    className="h-8 px-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      placeholder="/keyword"
+                      value={newTemplateKeyword}
+                      onChange={(e) => setNewTemplateKeyword(e.target.value.replace(/[^a-z0-9]/gi, '').toLowerCase())}
+                      className="h-8 text-xs w-24"
+                    />
+                    <Input
+                      type="text"
+                      placeholder="Quick reply text..."
+                      value={newTemplateText}
+                      onChange={(e) => setNewTemplateText(e.target.value)}
+                      className="h-8 text-xs flex-1"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && newTemplateText.trim() && newTemplateKeyword.trim()) {
+                          createTemplate(newTemplateText, newTemplateKeyword);
+                          setNewTemplateText('');
+                          setNewTemplateKeyword('');
+                        }
+                      }}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        if (newTemplateText.trim() && newTemplateKeyword.trim()) {
+                          createTemplate(newTemplateText, newTemplateKeyword);
+                          setNewTemplateText('');
+                          setNewTemplateKeyword('');
+                        }
+                      }}
+                      disabled={!newTemplateText.trim() || !newTemplateKeyword.trim()}
+                      className="h-8 px-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-[9px] text-neutral-500">Keyword is used for /{'{keyword}'} slash command</p>
                 </div>
                 
                 {/* Template List with Edit/Delete */}
-                <div className="space-y-1 max-h-32 overflow-y-auto">
+                <div className="space-y-1.5 max-h-40 overflow-y-auto">
                   {quickReplies.map((template) => (
-                    <div key={template.id} className="flex items-center gap-2 group">
+                    <div key={template.id} className="flex items-center gap-2 group bg-neutral-800/30 rounded-lg px-2 py-1.5">
                       {editingTemplate?.id === template.id ? (
                         <>
+                          <Input
+                            type="text"
+                            value={editKeyword}
+                            onChange={(e) => setEditKeyword(e.target.value.replace(/[^a-z0-9]/gi, '').toLowerCase())}
+                            className="h-7 text-xs w-20"
+                            placeholder="keyword"
+                          />
                           <Input
                             type="text"
                             value={editText}
                             onChange={(e) => setEditText(e.target.value)}
                             className="h-7 text-xs flex-1"
                             onKeyDown={(e) => {
-                              if (e.key === 'Enter' && editText.trim()) {
-                                updateTemplate(template.id!, editText);
+                              if (e.key === 'Enter' && editText.trim() && editKeyword.trim()) {
+                                updateTemplate(template.id!, editText, editKeyword);
                                 setEditingTemplate(null);
                               } else if (e.key === 'Escape') {
                                 setEditingTemplate(null);
@@ -370,10 +473,12 @@ export function AdminChatPanel({
                             size="sm"
                             variant="ghost"
                             onClick={() => {
-                              updateTemplate(template.id!, editText);
-                              setEditingTemplate(null);
+                              if (editText.trim() && editKeyword.trim()) {
+                                updateTemplate(template.id!, editText, editKeyword);
+                                setEditingTemplate(null);
+                              }
                             }}
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 text-emerald-500"
                           >
                             ✓
                           </Button>
@@ -388,11 +493,13 @@ export function AdminChatPanel({
                         </>
                       ) : (
                         <>
+                          <span className="text-[10px] text-violet-400 font-mono bg-violet-500/10 px-1.5 py-0.5 rounded">/{template.keyword || '?'}</span>
                           <span className="text-xs text-neutral-300 flex-1 truncate">{template.text}</span>
                           <button
                             onClick={() => {
                               setEditingTemplate(template);
                               setEditText(template.text);
+                              setEditKeyword(template.keyword || '');
                             }}
                             className="opacity-0 group-hover:opacity-100 p-1 text-neutral-500 hover:text-neutral-300 transition-opacity"
                           >
@@ -463,12 +570,24 @@ export function AdminChatPanel({
         )}
 
         <div className="relative group mt-4">
+          {/* Slash Command Dropdown */}
+          <SlashCommandDropdown
+            quickReplies={quickReplies}
+            broadcastTemplates={broadcastTemplates}
+            filterText={slashFilterText}
+            visible={showSlashCommand}
+            onSelect={handleSlashSelect}
+            onClose={() => setShowSlashCommand(false)}
+            selectedIndex={slashSelectedIndex}
+            onSelectedIndexChange={setSlashSelectedIndex}
+          />
+          
           <input
             type="text"
             value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            onChange={handleInputChange}
             onKeyDown={handleKeyDown}
-            placeholder="Tap here to send your message"
+            placeholder="Type / for slash commands..."
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2.5 px-4 pr-10 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-neutral-600 transition-all outline-none"
             disabled={isSending}
           />

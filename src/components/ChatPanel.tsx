@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import EmojiPicker, { Theme } from 'emoji-picker-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { BroadcastMessage } from '@/components/BroadcastMessage';
 import type { Message } from '@/types';
 
 interface ChatPanelProps {
@@ -84,17 +85,23 @@ export function ChatPanel({
 
       {/* Pinned Section / Broadcast Banner */}
       {pinnedMessages.length > 0 && (
-        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 flex items-start gap-3 shrink-0 relative group">
-          <div className="mt-0.5 shrink-0">
-            <Megaphone className="w-4 h-4 text-orange-500" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Announcement</p>
-            {pinnedMessages.map(msg => (
-              <p key={msg.id} className="text-xs text-neutral-200 line-clamp-2 leading-relaxed">
-                {msg.message}
-              </p>
-            ))}
+        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 shrink-0">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">
+              <Megaphone className="w-4 h-4 text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-2">Announcement</p>
+              {pinnedMessages.map(msg => (
+                <div key={msg.id} className="space-y-2">
+                  <BroadcastMessage 
+                    text={msg.message} 
+                    link={msg.broadcastLink}
+                    showQrCode={msg.showQrCode}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -168,13 +175,24 @@ export function ChatPanel({
                       {msg.timestamp.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', hour12: true })}
                     </span>
                   </div>
-                  <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
-                    isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
-                    msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
-                    'text-neutral-400 group-hover:text-neutral-300'
-                  }`}>
-                    {renderMessageWithLinks(msg.message, !!isAdmin || !!isBroadcast)}
-                  </div>
+                  {/* Broadcast with link/QR support */}
+                  {isBroadcast && (msg.broadcastLink || msg.showQrCode) ? (
+                    <div className="mt-1">
+                      <BroadcastMessage 
+                        text={msg.message} 
+                        link={msg.broadcastLink}
+                        showQrCode={msg.showQrCode}
+                      />
+                    </div>
+                  ) : (
+                    <div className={`text-[14px] mt-0.5 leading-relaxed transition-colors ${
+                      isBroadcast ? 'text-amber-200/90 group-hover:text-amber-100' : 
+                      msg.messageType === 'private' ? 'text-purple-200/90 group-hover:text-purple-100' : 
+                      'text-neutral-400 group-hover:text-neutral-300'
+                    }`}>
+                      {renderMessageWithLinks(msg.message, !!isAdmin || !!isBroadcast)}
+                    </div>
+                  )}
 
                   {/* Private Reply Indicator */}
                   {msg.messageType === 'private' && (
