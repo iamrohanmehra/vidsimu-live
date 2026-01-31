@@ -46,7 +46,7 @@ export function StreamPage() {
   }, [event]);
 
   // Calculate effective stream start (after connecting delay)
-  const connectingDelay = event?.connectingDelay ?? 30; // Default 30 seconds
+  const connectingDelay = event?.connectingDelay ?? 5; // Default 5 seconds
   const effectiveStreamStart = useMemo(() => {
     return streamStartTime + (connectingDelay * 1000);
   }, [streamStartTime, connectingDelay]);
@@ -140,7 +140,7 @@ export function StreamPage() {
         // Determine initial stream state based on time
         const now = Date.now();
         const startTime = new Date(eventData.time).getTime();
-        const delay = eventData.connectingDelay ?? 30;
+        const delay = eventData.connectingDelay ?? 5;
         const effectiveStart = startTime + (delay * 1000);
 
         const durationMinutes = eventData.duration ?? 60;
@@ -309,7 +309,7 @@ export function StreamPage() {
           event={event}
           screenUrl={event.screenUrl}
           faceUrl={event.url}
-          muted={muted}
+          muted={muted || streamState === 'connecting'}
           onMuteChange={setMuted}
           messages={allMessages}
           onSendMessage={sendMessage}
