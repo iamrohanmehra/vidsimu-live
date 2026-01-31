@@ -127,7 +127,11 @@ export function useStreamSync({
           // Seek to target
           video.currentTime = clampedTarget;
           lastSyncTimeRef.current = Date.now();
-          setIsReady(true);
+          if (import.meta.env.DEV) {
+            console.log(`[StreamSync] Seeking to ${clampedTarget}s (drift: ${drift.toFixed(2)}s)`);
+          }
+          // Do NOT set isReady(true) here - wait for 'seeked' event
+          setIsReady(false);
           
           if (import.meta.env.DEV) {
             const source = initialTime !== undefined && syncAttemptRef.current === 0 ? 'optimistic' : 'calculated';
@@ -217,7 +221,12 @@ export function useStreamSync({
         if (video.duration && expectedTime <= video.duration) {
           const drift = Math.abs(video.currentTime - expectedTime);
           if (drift > SYNC_THRESHOLD) {
-            syncVideo(true);
+             // Still drifting, retry sync
+             setIsReady(false);
+             syncVideo(true);
+          } else {
+             // Synced successfully
+             setIsReady(true);
           }
         }
       }, 100);

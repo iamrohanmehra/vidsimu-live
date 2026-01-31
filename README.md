@@ -18,12 +18,14 @@ chat, polls, synchronized video playback, and advanced viewer analytics.
 
 - **Live Chat**: Real-time messaging with admin moderation
 - **Live Polling**: Create and manage polls during sessions
+- **Poll Persistence**: Voter choices saved across reloads (visitor ID tracking)
 - **Viewer Presence**: Track active viewers in real-time
 - **Private Messaging**: Admin-to-viewer direct communication
 
 ### 🎵 Enhanced User Experience
 
 - **Synchronized Background Music**: Coordinated countdown music for all users
+- **Dark Mode UI**: Premium dark-only aesthetic for consistent viewer experience
 - **Countdown Screen**: Engaging pre-session countdown with instructor avatar
 - **Connecting Screen**: Smooth loading states with sync progress indicators
 - **Session Limit Protection**: Prevents unauthorized multi-tab viewing
@@ -42,6 +44,7 @@ chat, polls, synchronized video playback, and advanced viewer analytics.
 - **Chat Moderation**: Message pinning, deletion, and bulk actions
 - **Poll Management**: Create, activate, and close polls
 - **Viewer Monitoring**: Real-time viewer list with activity status
+- **Offline Analytics**: Export session data (JSON) for offline analysis
 - **Analytics Dashboard**: Comprehensive session metrics
 
 ## 🛠️ Tech Stack
@@ -54,6 +57,8 @@ chat, polls, synchronized video playback, and advanced viewer analytics.
 - **React Router** - Client-side routing
 - **Tailwind CSS** - Utility-first styling
 - **DaisyUI** - UI component library
+- **Radix UI** - Accessible component primitives
+- **Geist Font** - Premium typography
 
 ### Backend & Services
 
@@ -200,6 +205,12 @@ Uses a two-phase optimistic sync approach:
 - Presence system using Firestore timestamps
 - Optimistic UI updates with server reconciliation
 
+### Client-Side Export Engine
+
+- Full session data export to JSON (Chat, Polls, Participants)
+- Offline drag-and-drop analysis tool in Admin panel
+- Zero-backend dependency for data portability
+
 ### Session Gating
 
 - Client-side enforcement of single-tab viewing
@@ -221,10 +232,10 @@ Late-joining users experience zero perceptible delay:
 
 All users hear the same countdown music:
 
-- Deterministic seeded shuffle (same order per session)
-- Position calculated based on session start time
-- Auto-play with user gesture requirement
-- 10-minute pre-session music window
+- **Deterministic Seeded Shuffle**: Track order is calculated from session date
+- **Precise Timing**: Music starts exactly 10 minutes before session
+- **Auto-play Handling**: User gesture requirement with visual hints
+- **Position Sync**: Late joiners start at the correct track position
 
 ### Live Polling System
 
@@ -244,6 +255,7 @@ Comprehensive metrics computed at session end:
 - Average watch duration
 - Total messages sent
 - Unique chatters
+- **Offline Export**: Complete dataset download for external analysis
 
 ## 🚢 Deployment
 
@@ -336,14 +348,14 @@ Both platforms include:
 
 ```typescript
 {
-    id: string;
-    streamId: string;
-    userId: string;
-    displayName: string;
-    text: string;
-    timestamp: Timestamp;
-    isPrivate: boolean;
-    isPinned: boolean;
+  id: string;
+  streamId: string;
+  userId: string;
+  displayName: string;
+  text: string;
+  timestamp: Timestamp;
+  isPrivate: boolean;
+  isPinned: boolean;
 }
 ```
 

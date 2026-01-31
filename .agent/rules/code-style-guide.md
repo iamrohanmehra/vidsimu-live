@@ -11,7 +11,8 @@ storage.
 # Tech Stack
 
 - **Frontend**: React, TypeScript, Vite
-- **Styling**: Tailwind CSS, DaisyUI
+- **Styling**: Tailwind CSS, DaisyUI, Radix UI (Primitives), Geist Font
+  (Typography)
 - **Backend**: Firebase (Auth, Firestore, Hosting)
 - **Storage**: Cloudflare R2 (for music assets)
 - **Video**: HLS.js (via `useVideoDuration`)
@@ -36,6 +37,8 @@ storage.
   - `PollVoteCard`: For viewers to vote and see results.
 - **Data Structure**: Polls are stored in `polls` collection; votes in
   `poll_votes` sub-collection.
+- **Persistence**: Store `visitorId` locally and check against `poll_votes` to
+  persist voting state across reloads.
 
 ### 2. Stream Timing & Duration
 
@@ -64,11 +67,20 @@ storage.
 - **Layout**: Sidebar for tools (Chat, Polls, Viewers), Main area for
   Stream/Metrics.
 - **Metrics**: Real-time viewer count, Stream health, Message velocity.
+- **Offline Analytics**: Implement pure frontend-side JSON export/import. Do not
+  use backend storage for generated reports.
+
+### 5. Session Export
+
+- **Mechanism**: Client-side generation of JSON from Firestore queries.
+- **Privacy**: No PII permanently stored in export files if possible; use
+  anonymized IDs where appropriate.
 
 # UI/UX Standards
 
-- **Aesthetic**: Modern, "Premium" feel. Use gradients (violet/neutral),
-  glassmorphism, and subtle animations.
+- **Aesthetic**: Premium "Dark Mode Only" design. No light mode support. Use
+  deep grays, violet accents, and glassmorphism.
+- **Typography**: Use Geist Sans for UI and Geist Mono for code/data.
 - **Tailwind**: Use utility classes for layout and spacing.
 - **DaisyUI**: Use for complex interactive components (Countdown, Modals).
 - **Responsiveness**: Ensure mobile-first compatibility for viewer pages.

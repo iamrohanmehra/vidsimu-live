@@ -7,7 +7,9 @@ interface ConnectingScreenProps {
   effectiveStreamStart: number; // Unix timestamp in ms when stream actually starts
   syncConfidence?: SyncConfidence; // Sync confidence level
   onConnectingComplete: () => void;
+
   isOverlay?: boolean; // If true, renders as overlay instead of full screen
+  readyToTransition?: boolean; // Optional signal to force wait until external resource is ready
 }
 
 const MIN_DISPLAY_DURATION = 500; // Minimum time to show connecting screen (prevents flash)
@@ -18,6 +20,7 @@ export function ConnectingScreen({
   syncConfidence = 'low',
   onConnectingComplete,
   isOverlay = false,
+  readyToTransition,
 }: ConnectingScreenProps) {
   const hasTransitionedRef = useRef(false);
   const [mountTime] = useState(() => Date.now());
@@ -50,7 +53,10 @@ export function ConnectingScreen({
       const minTimeElapsed = canTransition;
 
       // Transition when minimum time elapsed AND (sync ready OR time reached)
-      if (minTimeElapsed && (syncReady || timeReached)) {
+      // AND if readyToTransition is defined, it must be true
+      const externalReady = readyToTransition !== undefined ? readyToTransition : true;
+      
+      if (minTimeElapsed && (syncReady || timeReached) && externalReady) {
         hasTransitionedRef.current = true;
         const elapsed = now - mountTimeRef.current;
         
@@ -66,10 +72,11 @@ export function ConnectingScreen({
     };
 
     checkTransition();
-    const interval = setInterval(checkTransition, 100);
 
+
+    const interval = setInterval(checkTransition, 100);
     return () => clearInterval(interval);
-  }, [effectiveStreamStart, syncConfidence, canTransition, onConnectingComplete]);
+  }, [effectiveStreamStart, syncConfidence, canTransition, onConnectingComplete, readyToTransition]);
 
   const containerClass = isOverlay
     ? "absolute inset-0 z-50 flex flex-col items-center justify-center bg-black"

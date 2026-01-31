@@ -37,6 +37,7 @@ export function StreamPage() {
   const [isChatOpen, setIsChatOpen] = useState(true);
   const [hasJoined, setHasJoined] = useState(false);
   const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+  const [isVideoReady, setIsVideoReady] = useState(false);
 
   // Calculate stream start time
   const streamStartTime = useMemo(() => {
@@ -199,7 +200,7 @@ export function StreamPage() {
   // Handle connecting complete -> transition to live
   const handleConnectingComplete = useCallback(() => {
     setStreamState('live');
-    setShowSyncOverlay(true); // Show sync overlay while videos load
+    setShowSyncOverlay(false); // Video is already ready from background sync
   }, []);
 
   // Handle sync overlay complete -> hide overlay
@@ -299,68 +300,78 @@ export function StreamPage() {
     return <SessionEndedScreen event={event!} />;
   }
 
-  // Connecting state
-  if (streamState === 'connecting') {
+  // Connecting or Live state (Render player + overlay if connecting)
+  if (streamState === 'connecting' || streamState === 'live') {
     return (
-      <ConnectingScreen
-        event={event}
-        effectiveStreamStart={effectiveStreamStart}
-        onConnectingComplete={handleConnectingComplete}
-      />
+      <>
+        {/* Main Stream Container (Always rendered in background for buffering) */}
+        <StreamContainer
+          event={event}
+          screenUrl={event.screenUrl}
+          faceUrl={event.url}
+          muted={muted}
+          onMuteChange={setMuted}
+          messages={allMessages}
+          onSendMessage={sendMessage}
+          isSending={isSending}
+          viewerCount={hasJoined ? viewerCount : displayViewerCount}
+          streamStartTime={effectiveStreamStart}
+          isChatOpen={isChatOpen}
+          onToggleChat={handleToggleChat}
+          onStreamEnd={handleStreamEnd}
+          initialSeekTime={syncState.estimatedTime}
+          visitorId={clientId}
+          userName={user?.name}
+          userEmail={user?.email}
+          onVideoReady={() => setIsVideoReady(true)}
+        />
+
+        {/* Connecting Screen Overlay (Gatekeeper) */}
+        {streamState === 'connecting' && (
+          <ConnectingScreen
+            event={event}
+            effectiveStreamStart={effectiveStreamStart}
+            onConnectingComplete={handleConnectingComplete}
+            isOverlay={true}
+            readyToTransition={isVideoReady}
+          />
+        )}
+
+        {/* Black Curtain - Hides everything while user is verifying/joining */}
+        {!hasJoined && (
+          <div className="fixed inset-0 bg-black z-40 transition-opacity duration-500" />
+        )}
+
+        {/* Sync overlay - shown while videos are loading and syncing (Live late joiners) */}
+        {showSyncOverlay && hasJoined && streamState === 'live' && (
+          <ConnectingScreen
+            event={event}
+            effectiveStreamStart={effectiveStreamStart}
+            syncConfidence={syncState.syncConfidence}
+            onConnectingComplete={handleSyncComplete}
+            isOverlay={true}
+          />
+        )}
+
+        <EmailVerificationModal
+          isOpen={showEmailModal}
+          onVerified={handleEmailVerified}
+        />
+
+        {user && (
+          <JoinSessionModal
+            isOpen={showJoinModal}
+            event={event}
+            onJoin={handleJoin}
+          />
+        )}
+      </>
     );
   }
 
-  // Live state
   return (
-    <>
-      <StreamContainer
-        event={event}
-        screenUrl={event.screenUrl}
-        faceUrl={event.url}
-        muted={muted}
-        onMuteChange={setMuted}
-        messages={allMessages}
-        onSendMessage={sendMessage}
-        isSending={isSending}
-        viewerCount={hasJoined ? viewerCount : displayViewerCount}
-        streamStartTime={effectiveStreamStart} // Use effective start (includes connecting delay)
-        isChatOpen={isChatOpen}
-        onToggleChat={handleToggleChat}
-        onStreamEnd={handleStreamEnd}
-        initialSeekTime={syncState.estimatedTime} // Pass optimistic position for immediate seeking
-        visitorId={clientId}
-        userName={user?.name}
-        userEmail={user?.email}
-      />
-
-      {/* Black Curtain - Hides the stream while user is verifying/joining */}
-      {!hasJoined && (
-        <div className="fixed inset-0 bg-black z-40 transition-opacity duration-500" />
-      )}
-
-      {/* Sync overlay - shown while videos are loading and syncing */}
-      {showSyncOverlay && hasJoined && (
-        <ConnectingScreen
-          event={event}
-          effectiveStreamStart={effectiveStreamStart}
-          syncConfidence={syncState.syncConfidence}
-          onConnectingComplete={handleSyncComplete}
-          isOverlay={true}
-        />
-      )}
-
-      <EmailVerificationModal
-        isOpen={showEmailModal}
-        onVerified={handleEmailVerified}
-      />
-
-      {user && (
-        <JoinSessionModal
-          isOpen={showJoinModal}
-          event={event}
-          onJoin={handleJoin}
-        />
-      )}
-    </>
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+       <span className="text-white">Unreachable State</span>
+    </div>
   );
 }

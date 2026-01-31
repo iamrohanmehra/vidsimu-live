@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useCallback, useState } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import { VideoPlayer } from './VideoPlayer';
 import { ChatPanel } from './ChatPanel';
 import { StreamHeader } from './StreamHeader';
@@ -25,6 +25,7 @@ interface StreamContainerProps {
   userEmail?: string;
   children?: ReactNode;
   initialSeekTime?: number; // Optimistic seek position for late joiners
+  onVideoReady?: () => void;
 }
 
 export function StreamContainer({
@@ -44,6 +45,7 @@ export function StreamContainer({
   userName,
   userEmail,
   initialSeekTime,
+  onVideoReady,
 }: StreamContainerProps) {
   // Toggle mute state
   const handleMuteToggle = useCallback(() => {
@@ -51,6 +53,27 @@ export function StreamContainer({
   }, [muted, onMuteChange]);
 
 
+
+  // Track video readiness
+  const [faceReady, setFaceReady] = useState(false);
+  const [screenReady, setScreenReady] = useState(false);
+
+  // Check if all active videos are ready
+  // - If screenUrl exists, we need BOTH face and screen to be ready
+  // - If no screenUrl, we only need face to be ready
+  useEffect(() => {
+    const isScreenActive = !!screenUrl;
+    
+    if (isScreenActive) {
+      if (faceReady && screenReady) {
+        onVideoReady?.();
+      }
+    } else {
+      if (faceReady) {
+        onVideoReady?.();
+      }
+    }
+  }, [faceReady, screenReady, screenUrl, onVideoReady]);
 
   // Face Camera Player Component
   const FaceCamPlayer = (
@@ -66,6 +89,7 @@ export function StreamContainer({
       initialSeekTime={initialSeekTime}
       className="w-full h-full"
       instructorName={event.instructor || 'Ashish Shukla'}
+      onSyncReady={() => setFaceReady(true)}
     />
   );
 
@@ -102,6 +126,7 @@ export function StreamContainer({
             initialSeekTime={initialSeekTime}
             className="w-full h-full md:rounded-xl overflow-hidden"
             instructorName={!screenUrl ? (event.instructor || 'Ashish Shukla') : undefined}
+            onSyncReady={() => setScreenReady(true)}
           />
         </div>
       </div>

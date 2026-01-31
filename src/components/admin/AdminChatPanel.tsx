@@ -1,8 +1,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   MessageSquare, 
-  Trash2, 
-  Smile, 
+  Trash2,
   Sparkles, 
   Reply, 
   Pin,
@@ -16,8 +15,6 @@ import {
   ChevronDown,
   ChevronRight
 } from 'lucide-react';
-import EmojiPicker, { Theme } from 'emoji-picker-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -592,33 +589,13 @@ export function AdminChatPanel({
             disabled={isSending}
           />
           <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center">
-            {inputText.trim() ? (
-              <button 
-                onClick={handleSend}
-                disabled={isSending}
-                className="text-neutral-500 hover:text-neutral-300 transition-colors"
-              >
-                <SendHorizontal className="w-4 h-4" />
-              </button>
-            ) : (
-              <Popover>
-                <PopoverTrigger asChild>
-                  <button 
-                    className="text-neutral-500 hover:text-neutral-300 transition-colors"
-                  >
-                    <Smile className="w-5 h-5" />
-                  </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-full p-0 border-none bg-transparent shadow-none" side="top" align="end">
-                  <EmojiPicker
-                    theme={Theme.DARK}
-                    onEmojiClick={(emojiData) => setInputText(prev => prev + emojiData.emoji)}
-                    width={300}
-                    height={400}
-                  />
-                </PopoverContent>
-              </Popover>
-            )}
+            <button 
+              onClick={handleSend}
+              disabled={isSending || !inputText.trim()}
+              className={`transition-colors ${inputText.trim() ? 'text-neutral-500 hover:text-neutral-300' : 'text-neutral-700 cursor-not-allowed'}`}
+            >
+              <SendHorizontal className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>

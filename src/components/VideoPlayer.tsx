@@ -16,6 +16,7 @@ interface VideoPlayerProps {
   initialSeekTime?: number; // Optimistic initial position for late joiners
   instructorName?: string;
   className?: string;
+  onSyncReady?: () => void;
 }
 
 export function VideoPlayer({
@@ -31,6 +32,7 @@ export function VideoPlayer({
   initialSeekTime,
   instructorName,
   className = '',
+  onSyncReady,
 }: VideoPlayerProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
@@ -44,7 +46,9 @@ export function VideoPlayer({
   const resolvedObjectFit: VideoFit = objectFit ?? (isFaceVideo ? 'cover' : 'contain');
 
   // Setup video sync for timeline-based playback
-  useStreamSync({
+
+
+  const { isReady } = useStreamSync({
     videoRef,
     streamStartTime,
     enabled: streamStartTime > 0 && !isLoading,
@@ -52,6 +56,13 @@ export function VideoPlayer({
     isPrimary: isPrimarySync,
     initialTime: initialSeekTime,
   });
+
+  // Notify parent when synced
+  useEffect(() => {
+    if (isReady) {
+      onSyncReady?.();
+    }
+  }, [isReady, onSyncReady]);
 
   // Keep videoRef in sync with player's internal ref
   useEffect(() => {
@@ -96,7 +107,7 @@ export function VideoPlayer({
         objectFit={resolvedObjectFit}
         onReady={handleReady}
         onError={handleError}
-        className="relative z-10"
+        className={`relative z-10 transition-opacity duration-500 ${isReady ? 'opacity-100' : 'opacity-0'}`}
       />
 
       {/* Loading overlay */}
