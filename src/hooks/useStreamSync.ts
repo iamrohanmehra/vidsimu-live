@@ -16,9 +16,10 @@ interface UseStreamSyncReturn {
 }
 
 // Strict sync parameters as requested
-const SYNC_THRESHOLD = 0.5; // Maximum allowed drift in seconds (was 1s)
-const SYNC_INTERVAL = 3000; // Check every 3 seconds
-const SEEK_THRESHOLD = 0.5; // Threshold below which we don't seek
+// Strict sync parameters as requested
+const SYNC_THRESHOLD = 0.5; // Maximum allowed drift in seconds (reverted from 0.15s)
+const SYNC_INTERVAL = 3000; // Check every 3 seconds (reverted from 2s)
+const SEEK_THRESHOLD = 0.5; // Threshold below which we don't seek (reverted from 0.2s)
 
 export function useStreamSync({ 
   videoRef, 

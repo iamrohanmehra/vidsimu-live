@@ -1,8 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { fetchBatch } from '@/lib/api';
 import { useCurrentViewers } from '@/hooks/useCurrentViewers';
-import { useVideoDuration } from '@/hooks/useVideoDuration';
 import {
   query,
   where,
@@ -27,6 +26,7 @@ import { useSessionExport } from '@/hooks/useSessionExport';
 import { useSessionTermination } from '@/hooks/useSessionTermination';
 import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
+import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { CountdownScreen } from '@/components/CountdownScreen';
 import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound, Power, LockOpen, MoreVertical } from 'lucide-react';
 import {
@@ -42,7 +42,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-import type { Event, Message } from '@/types';
+import { useOptimisticVideoSync } from '@/hooks/useOptimisticVideoSync';
+import type { Event, Message, StreamState } from '@/types';
 
 export function AdminLiveSessionPage() {
   const { id } = useParams<{ id: string }>();
@@ -51,7 +52,7 @@ export function AdminLiveSessionPage() {
   const [pinnedMessages, setPinnedMessages] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
-  const [currentTime, setCurrentTime] = useState(new Date());
+
   const [broadcastText, setBroadcastText] = useState('');
   const [isPreviewMuted, setIsPreviewMuted] = useState(true);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -76,14 +77,110 @@ export function AdminLiveSessionPage() {
   });
 
 
-  // Timer
+  // Calculate effective stream start (after connecting delay)
+  const connectingDelay = event?.connectingDelay ?? 5; // Default 5 seconds
+  const startTime = event?.time ? new Date(event.time).getTime() : 0;
+  
+  const effectiveStreamStart = useMemo(() => {
+    if (!startTime) return 0; // Fix: Prevent incorrect calculation when event is not ready
+    return startTime + (connectingDelay * 1000);
+  }, [startTime, connectingDelay]);
+
+  // Stream State Logic
+  const [streamState, setStreamState] = useState<StreamState>('loading');
+  const [showSyncOverlay, setShowSyncOverlay] = useState(false);
+
+  // Use optimistic video sync when transitioning to live (for late joiners)
+  const syncState = useOptimisticVideoSync({
+    streamStartTime: effectiveStreamStart,
+    videoUrl: event?.url, // Use facecam URL for duration check (consistent with StreamPage)
+    enabled: streamState === 'live' && showSyncOverlay,
+  });
+
   useEffect(() => {
-    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => clearInterval(timer);
+    if (!event) return;
+
+    if (!event.time) {
+       setStreamState('unavailable');
+       return;
+    }
+
+    const now = Date.now();
+    const durationMinutes = event.duration ?? 60;
+    const endTime = effectiveStreamStart + (durationMinutes * 60 * 1000);
+
+    if (now < startTime) {
+      setStreamState('countdown');
+    } else if (now < effectiveStreamStart) {
+      setStreamState('connecting');
+    } else if (now > endTime) {
+      setStreamState('ended');
+    } else {
+      // Late joiner - show sync overlay during live state (Matches StreamPage logic)
+      setStreamState('live');
+      setShowSyncOverlay(true);
+    }
+  }, [event, startTime, effectiveStreamStart]);
+
+  const handleCountdownComplete = useCallback(() => {
+    setStreamState('connecting');
   }, []);
 
-  // Fetch duration from face cam URL
-  const streamDuration = useVideoDuration(event?.url);
+  const handleConnectingComplete = useCallback(() => {
+    setStreamState('live');
+    setShowSyncOverlay(false); // Video is already ready from background sync
+  }, []);
+
+  // Handle sync overlay complete -> hide overlay
+  const handleSyncComplete = useCallback(() => {
+    setShowSyncOverlay(false);
+  }, []);
+
+  // Timer Logic - Aligned with StreamHeader.tsx
+  const [elapsed, setElapsed] = useState(0);
+
+  useEffect(() => {
+    if (!effectiveStreamStart || streamState !== 'live') return;
+
+    const updateElapsed = () => {
+      const now = Date.now();
+      const diff = Math.max(0, Math.floor((now - effectiveStreamStart) / 1000));
+      setElapsed(diff);
+    };
+
+    updateElapsed();
+    const interval = setInterval(updateElapsed, 1000);
+
+    return () => clearInterval(interval);
+  }, [effectiveStreamStart, streamState]);
+
+  // Format time helper (MM:SS or HH:MM:SS) - Aligned with StreamHeader
+  const formattedDuration = useMemo(() => {
+    const hours = Math.floor(elapsed / 3600);
+    const minutes = Math.floor((elapsed % 3600) / 60);
+    const seconds = elapsed % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }, [elapsed]);
+
+  // Calculate total duration string
+  const formattedTotalDuration = useMemo(() => {
+    const durationMs = (event?.duration ?? 60) * 60 * 1000;
+    const totalSeconds = Math.floor(durationMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+  }, [event]);
+
+
 
   // Load event data
   useEffect(() => {
@@ -244,7 +341,7 @@ export function AdminLiveSessionPage() {
       console.error('Error clearing chat:', e);
     }
   }, [id]);
-
+  const streamStatus = { status: streamState, startTime: event?.time ? new Date(event.time) : undefined };
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -261,44 +358,7 @@ export function AdminLiveSessionPage() {
     );
   }
 
-  // Time formatting helper
-  const formatTime = (ms: number) => {
-    const s = Math.floor((ms / 1000) % 60);
-    const m = Math.floor((ms / (1000 * 60)) % 60);
-    const h = Math.floor((ms / (1000 * 60 * 60)));
-    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-  };
 
-  // Calculate stream timing
-  const getStreamStatus = () => {
-    if (!event?.time) {
-      return { status: 'unscheduled' as const };
-    }
-
-    const start = new Date(event.time).getTime();
-    const now = currentTime.getTime();
-    
-    let durationMs = 60 * 60 * 1000;
-    if (streamDuration && streamDuration > 0) {
-      durationMs = streamDuration * 1000;
-    } else if (event.duration) {
-      durationMs = event.duration * 60 * 1000;
-    }
-
-    if (now < start) {
-      return { status: 'scheduled' as const, startTime: new Date(event.time) };
-    }
-
-    const elapsed = now - start;
-
-    if (elapsed >= durationMs) {
-      return { status: 'ended' as const };
-    }
-
-    return { status: 'live' as const, elapsed, duration: durationMs };
-  };
-
-  const streamStatus = getStreamStatus();
 
   return (
     <TooltipProvider>
@@ -344,28 +404,28 @@ export function AdminLiveSessionPage() {
                   </div>
                   
                   <div className="text-right min-w-[80px]">
-                    {streamStatus.status === 'unscheduled' && (
+                    {streamState === 'unavailable' && (
                       <p className="text-xs text-neutral-500">Not scheduled</p>
                     )}
-                    {streamStatus.status === 'scheduled' && (
+                    {streamState === 'countdown' && (
                       <div className="flex items-center gap-2 justify-end">
                         <span className="text-xs text-amber-500 font-mono">
-                          {streamStatus.startTime?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          {startTime && new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </span>
                         <span className="text-[10px] uppercase tracking-wider text-neutral-500 font-bold">Starts</span>
                       </div>
                     )}
-                    {streamStatus.status === 'ended' && (
+                    {streamState === 'ended' && (
                       <p className="text-xs font-bold text-destructive uppercase tracking-wider">Ended</p>
                     )}
-                    {streamStatus.status === 'live' && (
+                    {streamState === 'live' && (
                       <div className="flex items-center gap-2 justify-end">
                          <span className="text-xs font-mono tabular-nums text-neutral-300">
-                          {formatTime(streamStatus.elapsed)}
+                          {formattedDuration}
                         </span>
                         <span className="text-neutral-600">/</span>
                         <span className="text-xs font-mono tabular-nums text-neutral-500">
-                          {formatTime(streamStatus.duration)}
+                          {formattedTotalDuration}
                         </span>
                       </div>
                     )}
@@ -464,23 +524,78 @@ export function AdminLiveSessionPage() {
 
             {/* Content Area (Video) */}
             <div className="flex-1 bg-black relative overflow-hidden flex flex-col justify-center">
-              {streamStatus.status === 'live' ? (
+              {streamState === 'loading' && (
+                <div className="flex items-center justify-center h-full">
+                  <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                </div>
+              )}
+
+              {streamState === 'countdown' && event.time && (
+                 <div className="h-full w-full flex items-center justify-center">
+                    <CountdownScreen 
+                      event={event} 
+                      targetTime={startTime} 
+                      onCountdownComplete={handleCountdownComplete} 
+                      isEmbedded={true}
+                    />
+                 </div>
+              )}
+
+              {(streamState === 'connecting' || streamState === 'live') && (
                 <div className="relative w-full h-full">
-                  {/* Main Video: Screen Share or Face Cam fallback */}
-                  <div className="absolute inset-0 z-0">
+                   {/* Connecting Screen Overlay */}
+                   {streamState === 'connecting' && (
+                      <ConnectingScreen
+                        event={event}
+                        effectiveStreamStart={effectiveStreamStart}
+                        onConnectingComplete={handleConnectingComplete}
+                        isOverlay={true}
+                        // readyToTransition={isVideoReady} // Don't block Admin on video buffer to ensure it starts in sync with timer
+                      />
+                   )}
+
+                  {/* Hidden Face Cam Sync Player - This is the PRIMARY sync source, matching Viewer's architecture */}
+                  {/* The Viewer uses Face Cam as sync master. Admin must do the same for alignment. */}
+                  <div className="absolute inset-0 z-0 opacity-0 pointer-events-none" aria-hidden="true">
+                    <VideoPlayer
+                      url={event.url} // Face Cam URL - ALWAYS (this is the sync source)
+                      muted={true} // Always muted - this is just for sync
+                      onMuteChange={() => {}}
+                      isFaceVideo={true}
+                      objectFit="cover"
+                      streamStartTime={effectiveStreamStart}
+                      isPrimarySync={true} // THIS is the sync master
+                      initialSeekTime={syncState.estimatedTime}
+                    />
+                  </div>
+
+                  {/* Visible Video: Screen Share (or Face Cam fallback) - NOT primary sync */}
+                  <div className="absolute inset-0 z-10">
                     <VideoPlayer
                       url={event.screenUrl || event.url} 
-                      muted={true} 
-                      onMuteChange={() => {}}
-                      isFaceVideo={false}
+                      muted={streamState === 'connecting' || isPreviewMuted}
+                      onMuteChange={setIsPreviewMuted}
+                      isFaceVideo={!event.screenUrl} // Only face video if no screen share
                       objectFit="contain"
-                      streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                      streamStartTime={effectiveStreamStart}
+                      isPrimarySync={false} // NOT the sync master - follows Face Cam
+                      initialSeekTime={syncState.estimatedTime}
                       className="w-full h-full"
                       instructorName={!event.screenUrl ? (event.instructor || 'Ashish Shukla') : undefined}
                     />
                   </div>
 
                   {/* Mobile Face Cam PIP (only if screen share is active) */}
+                  {/* Sync overlay - shown while videos are syncing (Late joiners) */}
+                  {showSyncOverlay && streamState === 'live' && (
+                    <ConnectingScreen
+                      event={event}
+                      effectiveStreamStart={effectiveStreamStart}
+                      syncConfidence={syncState.syncConfidence}
+                      onConnectingComplete={handleSyncComplete}
+                      isOverlay={true}
+                    />
+                  )}
                   {event.screenUrl && (
                     <div className="absolute top-4 right-4 w-24 sm:w-32 aspect-video bg-black border border-white/10 rounded-lg overflow-hidden shadow-lg z-10 lg:hidden">
                       <VideoPlayer
@@ -489,33 +604,27 @@ export function AdminLiveSessionPage() {
                         onMuteChange={() => {}}
                         isFaceVideo={true}
                         objectFit="cover"
-                        streamStartTime={event.time ? new Date(event.time).getTime() : Date.now()}
+                        streamStartTime={effectiveStreamStart}
                         className="w-full h-full"
                       />
                     </div>
                   )}
                 </div>
-              ) : streamStatus.status === 'ended' ? (
+              )}
+
+              {streamState === 'ended' && (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
                   <div className="text-center">
                     <h2 className="text-2xl font-bold text-foreground">Session Ended</h2>
                     <p className="mt-2">Thank you for hosting!</p>
                   </div>
                 </div>
-              ) : (
-                // Scheduled / Unscheduled -> Countdown
-                <div className="h-full w-full flex items-center justify-center">
-                  {event.time ? (
-                    <CountdownScreen 
-                      event={event} 
-                      targetTime={new Date(event.time).getTime()} 
-                      onCountdownComplete={() => {}} 
-                      isEmbedded={true}
-                    />
-                  ) : (
-                    <div className="text-muted-foreground">Not Scheduled</div>
-                  )}
-                </div>
+              )}
+              
+              {streamState === 'unavailable' && (
+                 <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+                    Not Scheduled
+                 </div>
               )}
             </div>
           </div>
@@ -545,6 +654,7 @@ export function AdminLiveSessionPage() {
               setBroadcastText={setBroadcastText}
               handleSendBroadcast={handleSendBroadcast}
               isSending={isSending}
+              effectiveStreamStart={effectiveStreamStart} // Passed for synced preview
             />
           </div>
 
@@ -561,6 +671,7 @@ export function AdminLiveSessionPage() {
               setBroadcastText={setBroadcastText}
               handleSendBroadcast={handleSendBroadcast}
               isSending={isSending}
+              effectiveStreamStart={effectiveStreamStart} // Passed for synced preview
               hideVideo={true}
               chatPanel={
                 <AdminChatPanel

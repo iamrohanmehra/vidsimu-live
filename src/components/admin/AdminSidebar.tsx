@@ -30,6 +30,7 @@ interface AdminSidebarProps {
   setBroadcastText: (text: string) => void;
   handleSendBroadcast: (text: string, options?: { link?: string; showQrCode?: boolean }) => void;
   isSending: boolean;
+  effectiveStreamStart?: number; // Add prop for synced timing
 }
 
 export function AdminSidebar({
@@ -44,7 +45,8 @@ export function AdminSidebar({
   handleSendBroadcast,
   isSending,
   chatPanel,
-  hideVideo = false
+  hideVideo = false,
+  effectiveStreamStart
 }: AdminSidebarProps & { chatPanel?: React.ReactNode; hideVideo?: boolean }) {
   // Broadcast Templates
   const { templates: broadcastTemplates, createTemplate, updateTemplate, deleteTemplate } = useBroadcastTemplates();
@@ -67,8 +69,10 @@ export function AdminSidebar({
   const { bannedUsers, banUser, unbanUser } = useBannedUsers({ sessionId: id });
 
   // Use a stable fallback for stream start time if event.time is missing
+  // Use effectiveStreamStart if provided, otherwise fallback to event time or mount time
+  // This ensures the sidebar preview matches the main player's 5s delay
   const [mountTime] = useState(() => Date.now());
-  const streamStartTime = event.time ? new Date(event.time).getTime() : mountTime;
+  const resolvedStreamStart = effectiveStreamStart ?? (event.time ? new Date(event.time).getTime() : mountTime);
 
   return (
 
@@ -82,7 +86,7 @@ export function AdminSidebar({
             onMuteChange={setIsPreviewMuted}
             isFaceVideo={true}
             objectFit="cover"
-            streamStartTime={streamStartTime}
+            streamStartTime={resolvedStreamStart}
             className="w-full h-full"
             instructorName={event.instructor || 'Ashish Shukla'}
           />
