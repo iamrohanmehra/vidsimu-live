@@ -28,6 +28,8 @@ import { Button } from '@/components/ui/button';
 import { VideoPlayer } from '@/components/VideoPlayer';
 import { ConnectingScreen } from '@/components/ConnectingScreen';
 import { CountdownScreen } from '@/components/CountdownScreen';
+import { SessionEndedScreen } from '@/components/SessionEndedScreen';
+import { SessionNotScheduledScreen } from '@/components/SessionNotScheduledScreen';
 import { Volume2, VolumeX, ExternalLink, Download, Radio, Copy, Check, UsersRound, Power, LockOpen, MoreVertical } from 'lucide-react';
 import {
   DropdownMenu,
@@ -103,6 +105,12 @@ export function AdminLiveSessionPage() {
     if (!event.time) {
        setStreamState('unavailable');
        return;
+    }
+
+    // Check if stream URLs exist (match viewer page logic)
+    if (!event.url && !event.screenUrl) {
+      setStreamState('unavailable');
+      return;
     }
 
     const now = Date.now();
@@ -613,18 +621,16 @@ export function AdminLiveSessionPage() {
               )}
 
               {streamState === 'ended' && (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-bold text-foreground">Session Ended</h2>
-                    <p className="mt-2">Thank you for hosting!</p>
-                  </div>
-                </div>
+                <SessionEndedScreen 
+                  event={event} 
+                  className="min-h-0 h-full bg-black"
+                />
               )}
               
               {streamState === 'unavailable' && (
-                 <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                    Not Scheduled
-                 </div>
+                 <SessionNotScheduledScreen 
+                   className="min-h-0 h-full bg-black"
+                 />
               )}
             </div>
           </div>
@@ -648,13 +654,15 @@ export function AdminLiveSessionPage() {
               event={event}
               viewers={viewers}
               viewerCount={viewerCount}
-              isPreviewMuted={isPreviewMuted}
+              isPreviewMuted={streamState === 'connecting' || isPreviewMuted}
               setIsPreviewMuted={setIsPreviewMuted}
               broadcastText={broadcastText}
               setBroadcastText={setBroadcastText}
               handleSendBroadcast={handleSendBroadcast}
               isSending={isSending}
               effectiveStreamStart={effectiveStreamStart} // Passed for synced preview
+              hideVideo={streamState !== 'live' && streamState !== 'connecting'}
+              isConnecting={streamState === 'connecting'}
             />
           </div>
 

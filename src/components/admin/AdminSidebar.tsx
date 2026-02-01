@@ -46,8 +46,9 @@ export function AdminSidebar({
   isSending,
   chatPanel,
   hideVideo = false,
-  effectiveStreamStart
-}: AdminSidebarProps & { chatPanel?: React.ReactNode; hideVideo?: boolean }) {
+  effectiveStreamStart,
+  isConnecting = false
+}: AdminSidebarProps & { chatPanel?: React.ReactNode; hideVideo?: boolean; isConnecting?: boolean }) {
   // Broadcast Templates
   const { templates: broadcastTemplates, createTemplate, updateTemplate, deleteTemplate } = useBroadcastTemplates();
   const [isManagingTemplates, setIsManagingTemplates] = useState(false);
@@ -90,6 +91,11 @@ export function AdminSidebar({
             className="w-full h-full"
             instructorName={event.instructor || 'Ashish Shukla'}
           />
+          {isConnecting && (
+            <div className="absolute inset-0 bg-black/80 backdrop-blur-sm z-10 flex items-center justify-center">
+               <div className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+            </div>
+          )}
         </div>
       )}
 

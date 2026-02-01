@@ -87,8 +87,8 @@ export function useOptimisticVideoSync({
       // Calculate drift between estimate and accurate
       const drift = Math.abs(currentEstimatedTime - duration);
       
-      // High confidence if drift is minimal (< 500ms)
-      const confidence: SyncConfidence = drift < 0.5 ? 'high' : 'medium';
+      // High confidence if drift is minimal (< 1s)
+      const confidence: SyncConfidence = drift < 1.0 ? 'high' : 'medium';
 
       setState(prev => ({
         ...prev,
