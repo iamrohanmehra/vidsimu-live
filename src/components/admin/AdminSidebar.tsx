@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useBroadcastTemplates } from '@/hooks/useBroadcastTemplates';
 import { useBannedUsers } from '@/hooks/useBannedUsers';
+import { SlashCommandDropdown } from '@/components/admin/SlashCommandDropdown';
 import type { Event, BroadcastTemplate, Viewer } from '@/types';
 
 interface AdminSidebarProps {
@@ -61,6 +62,11 @@ export function AdminSidebar({
   const [editKeyword, setEditKeyword] = useState('');
   const [editLink, setEditLink] = useState('');
   const [editShowQr, setEditShowQr] = useState(false);
+
+  // Slash Command State for Broadcast
+  const [showSlashCommand, setShowSlashCommand] = useState(false);
+  const [slashFilterText, setSlashFilterText] = useState('');
+  const [slashSelectedIndex, setSlashSelectedIndex] = useState(0);
 
   // Current broadcast input state
   const [broadcastLink, setBroadcastLink] = useState('');
@@ -162,11 +168,75 @@ export function AdminSidebar({
             <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto custom-scrollbar">
               <div className="space-y-4">
                 <h3 className="text-xs font-normal text-neutral-400 uppercase tracking-wider px-1">Broadcast Tool</h3>
-                <div className="space-y-3">
+                <div className="space-y-3 relative">
+                  
+                  {/* Slash Command Dropdown */}
+                  <SlashCommandDropdown
+                    items={broadcastTemplates}
+                    filterText={slashFilterText}
+                    visible={showSlashCommand}
+                    onSelect={(item) => {
+                       setBroadcastText(item.text);
+                       if (item.link) setBroadcastLink(item.link);
+                       if (item.showQrCode !== undefined) setShowQrCode(item.showQrCode);
+                       setShowSlashCommand(false);
+                       setSlashFilterText('');
+                    }}
+                    onClose={() => setShowSlashCommand(false)}
+                    selectedIndex={slashSelectedIndex}
+                    onSelectedIndexChange={setSlashSelectedIndex}
+                    label="Broadcast"
+                    position="bottom"
+                  />
+
                   <textarea 
                     value={broadcastText}
-                    onChange={(e) => setBroadcastText(e.target.value)}
-                    placeholder="Type an announcement (optional if link provided)..." 
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      setBroadcastText(value);
+
+                      // Check for slash command at the start
+                      if (value.startsWith('/')) {
+                        setShowSlashCommand(true);
+                        setSlashFilterText(value.slice(1));
+                        setSlashSelectedIndex(0);
+                      } else {
+                        setShowSlashCommand(false);
+                        setSlashFilterText('');
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                       if (showSlashCommand) {
+                        const filtered = broadcastTemplates.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase()));
+                        
+                        if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          setSlashSelectedIndex(prev => Math.min(prev + 1, filtered.length - 1));
+                          return;
+                        }
+                        if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          setSlashSelectedIndex(prev => Math.max(prev - 1, 0));
+                          return;
+                        }
+                        if (e.key === 'Enter' && filtered.length > 0) {
+                          e.preventDefault();
+                          const item = filtered[slashSelectedIndex];
+                          setBroadcastText(item.text);
+                          if (item.link) setBroadcastLink(item.link);
+                          if (item.showQrCode !== undefined) setShowQrCode(item.showQrCode);
+                          setShowSlashCommand(false);
+                          setSlashFilterText('');
+                          return;
+                        }
+                        if (e.key === 'Escape') {
+                          e.preventDefault();
+                          setShowSlashCommand(false);
+                          return;
+                        }
+                      }
+                    }}
+                    placeholder="Type an announcement (or use / for templates)..." 
                     className="w-full h-24 bg-neutral-800 border border-neutral-700 rounded-xl p-4 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-orange-500/50 transition-all outline-none resize-none"
                   ></textarea>
                   

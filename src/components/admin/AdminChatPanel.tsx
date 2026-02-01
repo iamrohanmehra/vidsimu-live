@@ -28,7 +28,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useQuickReplyTemplates } from '@/hooks/useQuickReplyTemplates';
-import { useBroadcastTemplates } from '@/hooks/useBroadcastTemplates';
 import { SlashCommandDropdown } from '@/components/admin/SlashCommandDropdown';
 import { BroadcastMessage } from '@/components/BroadcastMessage';
 import type { Message, QuickReplyTemplate } from '@/types';
@@ -68,7 +67,6 @@ export function AdminChatPanel({
   
   // Quick Reply Templates
   const { templates: quickReplies, createTemplate, updateTemplate, deleteTemplate } = useQuickReplyTemplates();
-  const { templates: broadcastTemplates } = useBroadcastTemplates();
   const [showQuickReplies, setShowQuickReplies] = useState(false);
   const [isManagingTemplates, setIsManagingTemplates] = useState(false);
   const [newTemplateText, setNewTemplateText] = useState('');
@@ -100,11 +98,8 @@ export function AdminChatPanel({
 
   // Get filtered templates for slash command
   const getFilteredTemplates = useCallback(() => {
-    return [
-      ...quickReplies.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase())),
-      ...broadcastTemplates.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase())),
-    ];
-  }, [quickReplies, broadcastTemplates, slashFilterText]);
+    return quickReplies.filter(t => t.keyword && t.keyword.toLowerCase().startsWith(slashFilterText.toLowerCase()));
+  }, [quickReplies, slashFilterText]);
 
   // Handle input change with slash command detection
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -574,14 +569,14 @@ export function AdminChatPanel({
         <div className="relative group mt-4">
           {/* Slash Command Dropdown */}
           <SlashCommandDropdown
-            quickReplies={quickReplies}
-            broadcastTemplates={broadcastTemplates}
+            items={quickReplies}
             filterText={slashFilterText}
             visible={showSlashCommand}
-            onSelect={handleSlashSelect}
+            onSelect={(item) => handleSlashSelect(item.text)}
             onClose={() => setShowSlashCommand(false)}
             selectedIndex={slashSelectedIndex}
             onSelectedIndexChange={setSlashSelectedIndex}
+            label="Reply"
           />
           
           <input
