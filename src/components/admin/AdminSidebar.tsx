@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { 
   UsersRound, 
   Megaphone, 
-  Vote, 
+  BarChart2, 
   Link,
   Plus,
   Pencil,
@@ -130,7 +130,7 @@ export function AdminSidebar({
               value="polls" 
               className="relative flex-1 h-full flex items-center justify-center gap-2 text-xs font-medium bg-transparent border-none data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:text-white text-neutral-500 hover:text-neutral-300 rounded-none shadow-none transition-all after:z-10 min-w-[80px]"
             >
-              <Vote className="w-3.5 h-3.5" /> Polls
+              <BarChart2 className="w-3.5 h-3.5" /> Polls
             </TabsTrigger>
           </TabsList>
         </div>
@@ -139,13 +139,13 @@ export function AdminSidebar({
         <div className="flex-1 overflow-hidden relative bg-neutral-900/50">
           {/* Chat Tab (Mobile Only typically) */}
           {chatPanel && (
-            <TabsContent value="chat" className="absolute inset-0 m-0 data-[state=active]:flex flex-col">
+            <TabsContent value="chat" className="absolute inset-0 m-0 p-0 data-[state=active]:flex flex-col">
               {chatPanel}
             </TabsContent>
           )}
 
           {/* Users Tab */}
-          <TabsContent value="users" className="absolute inset-0 m-0 data-[state=active]:flex flex-col">
+          <TabsContent value="users" className="absolute inset-0 m-0 p-0 data-[state=active]:flex flex-col">
             <div className="flex-1 flex flex-col overflow-hidden">
               <AdminViewersList 
                 viewers={viewers} 
@@ -158,7 +158,7 @@ export function AdminSidebar({
           </TabsContent>
 
           {/* Broadcast Tab */}
-          <TabsContent value="broadcast" className="absolute inset-0 m-0 data-[state=active]:flex flex-col">
+          <TabsContent value="broadcast" className="absolute inset-0 m-0 p-0 data-[state=active]:flex flex-col">
             <div className="flex-1 flex flex-col p-6 space-y-6 overflow-y-auto custom-scrollbar">
               <div className="space-y-4">
                 <h3 className="text-xs font-normal text-neutral-400 uppercase tracking-wider px-1">Broadcast Tool</h3>
@@ -451,7 +451,7 @@ export function AdminSidebar({
           </TabsContent>
 
           {/* Polls Tab */}
-          <TabsContent value="polls" className="absolute inset-0 m-0 data-[state=active]:flex flex-col">
+          <TabsContent value="polls" className="absolute inset-0 m-0 p-0 data-[state=active]:flex flex-col">
             <div className="flex-1 flex flex-col overflow-hidden">
               <AdminPollManager streamId={id} />
             </div>

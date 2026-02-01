@@ -14,7 +14,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import { pollsCollection, pollVotesCollection } from '@/lib/collections';
-import type { Poll, PollOption, PollVote } from '@/types';
+import type { Poll, PollOption } from '@/types';
 
 // Voter information for display
 export interface VoterInfo {
@@ -35,15 +35,10 @@ interface UsePollsOptions {
 export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
   const [polls, setPolls] = useState<Poll[]>([]);
   const [activePoll, setActivePoll] = useState<Poll | null>(null);
-  const [votersByOption, setVotersByOption] = useState<VotersByOption>({});
+
   const [isLoading, setIsLoading] = useState(true);
 
-  // Sync state with activePoll during render to avoid cascading renders in useEffect
-  const [prevPollId, setPrevPollId] = useState<string | undefined>(activePoll?.id);
-  if (activePoll?.id !== prevPollId) {
-    setPrevPollId(activePoll?.id);
-    setVotersByOption({});
-  }
+
 
   // Subscribe to all polls for this stream
   useEffect(() => {
@@ -85,45 +80,8 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
     return () => unsubscribe();
   }, [streamId, enabled]);
 
-  // Subscribe to votes for active poll to get voter details
-  useEffect(() => {
-    if (!activePoll?.id) return;
+  // Vote subscription moved to usePollVotes hook
 
-    const q = query(
-      pollVotesCollection,
-      where('pollId', '==', activePoll.id)
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const voters: VotersByOption = {};
-      
-      // Initialize empty arrays for each option
-      activePoll.options.forEach(opt => {
-        voters[opt.id] = [];
-      });
-
-      snapshot.forEach((docSnap) => {
-        const data = docSnap.data() as PollVote;
-        const voterInfo: VoterInfo = {
-          visitorId: data.visitorId,
-          name: data.name || 'Anonymous',
-          email: data.email || '',
-          selectedOptions: data.selectedOptions || [],
-        };
-
-        // Add voter to each option they selected
-        voterInfo.selectedOptions.forEach(optionId => {
-          if (voters[optionId]) {
-            voters[optionId].push(voterInfo);
-          }
-        });
-      });
-
-      setVotersByOption(voters);
-    });
-
-    return () => unsubscribe();
-  }, [activePoll?.id, activePoll?.options]);
 
   // Create a new poll
   const createPoll = useCallback(async (
@@ -201,7 +159,7 @@ export function usePolls({ streamId, enabled = true }: UsePollsOptions) {
   return {
     polls,
     activePoll,
-    votersByOption,
+
     isLoading,
     createPoll,
     launchPoll,

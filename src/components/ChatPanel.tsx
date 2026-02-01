@@ -73,12 +73,7 @@ export function ChatPanel({
 
   return (
     <div className="flex flex-col h-full bg-transparent text-white">
-      {/* Header */}
-      <div className="h-14 border-b border-neutral-800 flex items-center px-6 bg-neutral-900/50 backdrop-blur-md shrink-0">
-        <h2 className="text-xs font-normal text-neutral-100 flex items-center gap-2">
-          <MessageSquare className="w-4 h-4" /> Chat
-        </h2>
-      </div>
+
 
       {/* Pinned Section / Broadcast Banner */}
       {pinnedMessages.length > 0 && (
@@ -214,6 +209,7 @@ export function ChatPanel({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyDown={handleKeyDown}
+            name="chat-input"
             placeholder="Tap here to send your message"
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2.5 px-4 pr-10 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-neutral-600 transition-all outline-none"
             disabled={isSending}

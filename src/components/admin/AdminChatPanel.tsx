@@ -203,24 +203,30 @@ export function AdminChatPanel({
 
       {/* Pinned Section / Broadcast Banner */}
       {pinnedMessages.length > 0 && (
-        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 flex items-start gap-3 shrink-0 relative group">
-          <div className="mt-0.5 shrink-0">
-            <Megaphone className="w-4 h-4 text-orange-500" />
+        <div className="bg-orange-500/10 border-b border-orange-500/20 px-4 py-3 shrink-0 relative group">
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5 shrink-0">
+              <Megaphone className="w-4 h-4 text-orange-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-2">Announcement</p>
+              {pinnedMessages.map(msg => (
+                <div key={msg.id} className="space-y-2">
+                  <BroadcastMessage 
+                    text={msg.message} 
+                    link={msg.broadcastLink}
+                    showQrCode={msg.showQrCode}
+                  />
+                </div>
+              ))}
+            </div>
+            <button 
+              onClick={() => pinnedMessages.forEach(msg => onUnpinMessage(msg.id!))}
+              className="absolute top-3 right-2 p-1 hover:bg-orange-500/20 rounded transition-colors text-orange-500 shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[10px] text-orange-500 font-bold uppercase tracking-wider mb-0.5">Admin Announcement</p>
-            {pinnedMessages.map(msg => (
-              <p key={msg.id} className="text-xs text-neutral-200 line-clamp-2 leading-relaxed">
-                {msg.message}
-              </p>
-            ))}
-          </div>
-          <button 
-            onClick={() => pinnedMessages.forEach(msg => onUnpinMessage(msg.id!))}
-            className="p-1 hover:bg-orange-500/20 rounded transition-colors text-orange-500 shrink-0"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
 
@@ -301,7 +307,6 @@ export function AdminChatPanel({
                         text={msg.message} 
                         link={msg.broadcastLink}
                         showQrCode={msg.showQrCode}
-                        compact={true}
                       />
                     </div>
                   ) : (
@@ -584,6 +589,7 @@ export function AdminChatPanel({
             value={inputText}
             onChange={handleInputChange}
             onKeyDown={handleKeyDown}
+            name="admin-chat-input"
             placeholder="Type / for slash commands..."
             className="w-full bg-neutral-800 border border-neutral-700 rounded-lg py-2.5 px-4 pr-10 text-xs text-neutral-100 placeholder-neutral-500 focus:bg-neutral-800/50 focus:border-neutral-600 transition-all outline-none"
             disabled={isSending}

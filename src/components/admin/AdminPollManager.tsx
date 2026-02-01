@@ -1,24 +1,25 @@
 import { useState } from 'react';
-import { usePolls, type VoterInfo } from '@/hooks/usePolls';
+import { usePolls } from '@/hooks/usePolls';
 import { usePollTemplates } from '@/hooks/usePollTemplates';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import type { Poll, PollTemplate } from '@/types';
-import { ChevronDown, ChevronRight, Trash2, BookTemplate, Pencil, Play } from 'lucide-react';
+import { Trash2, BookTemplate, Pencil, Play, BarChart2 } from 'lucide-react';
+import { PollResults } from './polls/PollResults';
 
 interface AdminPollManagerProps {
   streamId: string;
 }
 
 export function AdminPollManager({ streamId }: AdminPollManagerProps) {
-  const { polls, activePoll, votersByOption, createPoll, launchPoll, endPoll, toggleResultsVisibility, deletePoll } = usePolls({ streamId });
+  const { polls, activePoll, createPoll, launchPoll, endPoll, toggleResultsVisibility, deletePoll } = usePolls({ streamId });
   const { templates, createTemplate, updateTemplate, deleteTemplate } = usePollTemplates();
   
   const [isCreating, setIsCreating] = useState(false);
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState(['', '']);
   const [pollType, setPollType] = useState<'single' | 'multiple'>('single');
-  const [expandedOptions, setExpandedOptions] = useState<Record<string, boolean>>({});
   const [deletingPollId, setDeletingPollId] = useState<string | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   
@@ -28,6 +29,9 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
   const [templateName, setTemplateName] = useState('');
   const [confirmDeleteTemplateId, setConfirmDeleteTemplateId] = useState<string | null>(null);
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(null);
+
+  // Viewing Poll State
+  const [viewingPoll, setViewingPoll] = useState<Poll | null>(null);
 
   const handleAddOption = () => {
     if (options.length < 6) setOptions([...options, '']);
@@ -79,13 +83,8 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
     }
   };
 
-  const getVotePercentage = (poll: Poll, optionId: string) => {
-    if (poll.totalVotes === 0) return 0;
-    return Math.round((poll.voteCounts[optionId] || 0) / poll.totalVotes * 100);
-  };
-
   const draftPolls = polls.filter(p => p.status === 'draft');
-  const endedPolls = polls.filter(p => p.status === 'ended').slice(0, 5);
+  const endedPolls = polls.filter(p => p.status === 'ended');
 
   return (
     <div className="flex flex-col h-full">
@@ -115,6 +114,7 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
         {isCreating && (
           <div className="rounded-lg border border-border bg-card p-4 space-y-3">
             <Input
+              name="poll-question"
               type="text"
               placeholder="Poll question..."
               value={question}
@@ -125,6 +125,7 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
               {options.map((opt, idx) => (
                 <div key={idx} className="flex gap-2">
                   <Input
+                    name={`poll-option-${idx}`}
                     type="text"
                     placeholder={`Option ${idx + 1}`}
                     value={opt}
@@ -161,6 +162,7 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
             <div className="border-t border-border pt-3 mt-2">
               <div className="flex gap-2">
                 <Input
+                  name="template-name"
                   type="text"
                   placeholder="Template name (optional)"
                   value={templateName}
@@ -197,12 +199,14 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
               <span className="text-xs font-medium text-primary uppercase">Edit Template</span>
             </div>
             <Input
+              name="edit-template-name"
               type="text"
               placeholder="Template name..."
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
             />
             <Input
+              name="edit-template-question"
               type="text"
               placeholder="Poll question..."
               value={question}
@@ -213,6 +217,7 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
               {options.map((opt, idx) => (
                 <div key={idx} className="flex gap-2">
                   <Input
+                    name={`edit-template-option-${idx}`}
                     type="text"
                     placeholder={`Option ${idx + 1}`}
                     value={opt}
@@ -341,86 +346,30 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
 
         {/* Active Poll */}
         {activePoll && (
-          <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 uppercase">Live</span>
-              <span className="ml-auto text-xs text-muted-foreground">{activePoll.totalVotes} votes</span>
-            </div>
-            <p className="text-foreground font-medium text-sm mb-3">{activePoll.question}</p>
-            
-            {/* Results */}
-            <div className="space-y-3 mb-4">
-              {activePoll.options.map((opt) => {
-                const pct = getVotePercentage(activePoll, opt.id);
-                const voters = votersByOption[opt.id] || [];
-                const isExpanded = expandedOptions[opt.id] || false;
-                const voteCount = activePoll.voteCounts[opt.id] || 0;
-                
-                return (
-                  <div key={opt.id} className="space-y-1">
-                    {/* Option Header */}
-                    <div 
-                      className="flex justify-between items-center text-xs mb-1 cursor-pointer hover:bg-muted/30 rounded px-1 py-0.5 -mx-1 transition-colors"
-                      onClick={() => setExpandedOptions(prev => ({ ...prev, [opt.id]: !prev[opt.id] }))}
-                    >
-                      <div className="flex items-center gap-1">
-                        {voters.length > 0 ? (
-                          isExpanded ? <ChevronDown className="w-3 h-3 text-muted-foreground" /> : <ChevronRight className="w-3 h-3 text-muted-foreground" />
-                        ) : (
-                          <span className="w-3" />
-                        )}
-                        <span className="text-muted-foreground">{opt.text}</span>
-                        <span className="text-muted-foreground/60 text-[10px]">({voteCount})</span>
-                      </div>
-                      <span className="text-muted-foreground tabular-nums">{pct}%</span>
-                    </div>
-                    
-                    {/* Progress Bar */}
-                    <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-emerald-500 rounded-full transition-all duration-500"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
-                    
-                    {/* Voter Details (Expandable) */}
-                    {isExpanded && voters.length > 0 && (
-                      <div className="ml-4 mt-2 space-y-1 border-l-2 border-muted pl-3">
-                        {voters.map((voter: VoterInfo, idx: number) => (
-                          <div key={voter.visitorId + idx} className="text-xs text-muted-foreground">
-                            <span className="font-medium text-foreground/80">{voter.name}</span>
-                            {voter.email && (
-                              <span className="text-muted-foreground/60 ml-1">({voter.email})</span>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => endPoll(activePoll.id!)}
-                className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
-              >
-                End
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => toggleResultsVisibility(activePoll.id!, !activePoll.resultsVisible)}
-                className="flex-1"
-              >
-                {activePoll.resultsVisible ? 'Hide' : 'Show'} Results
-              </Button>
-            </div>
-          </div>
+          <PollResults 
+            poll={activePoll} 
+            isLive={true} 
+            actions={
+              <div className="flex gap-2 w-full">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => endPoll(activePoll.id!)}
+                  className="flex-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                >
+                  End
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => toggleResultsVisibility(activePoll.id!, !activePoll.resultsVisible)}
+                  className="flex-1"
+                >
+                  {activePoll.resultsVisible ? 'Hide' : 'Show'} Results
+                </Button>
+              </div>
+            }
+          />
         )}
 
         {/* Draft Polls */}
@@ -448,7 +397,7 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
         {/* Recent Ended Polls */}
         {endedPolls.length > 0 && (
           <div>
-            <h3 className="text-xs font-medium text-muted-foreground uppercase mb-2">Recent</h3>
+            <h3 className="text-xs font-medium text-muted-foreground uppercase mb-2">History</h3>
             <div className="space-y-2">
               {endedPolls.map((poll) => (
                 <div key={poll.id} className="rounded-lg border border-border p-3">
@@ -457,41 +406,56 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
                       <p className="text-sm text-muted-foreground truncate">{poll.question}</p>
                       <p className="text-xs text-muted-foreground mt-1">{poll.totalVotes} votes • Ended</p>
                     </div>
-                    {confirmDeleteId === poll.id ? (
-                      <div className="flex gap-1 shrink-0">
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={async () => {
-                            setDeletingPollId(poll.id!);
-                            await deletePoll(poll.id!);
-                            setDeletingPollId(null);
-                            setConfirmDeleteId(null);
-                          }}
-                          disabled={deletingPollId === poll.id}
-                          className="h-7 px-2 text-xs"
-                        >
-                          {deletingPollId === poll.id ? '...' : 'Delete'}
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setConfirmDeleteId(null)}
-                          className="h-7 px-2 text-xs"
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        onClick={() => setConfirmDeleteId(poll.id!)}
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    )}
+                    
+                    <div className="flex gap-1 shrink-0">
+                      {confirmDeleteId === poll.id ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={async () => {
+                              setDeletingPollId(poll.id!);
+                              await deletePoll(poll.id!);
+                              setDeletingPollId(null);
+                              setConfirmDeleteId(null);
+                            }}
+                            disabled={deletingPollId === poll.id}
+                            className="h-7 px-2 text-xs"
+                          >
+                            {deletingPollId === poll.id ? '...' : 'Delete'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => setConfirmDeleteId(null)}
+                            className="h-7 px-2 text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </>
+                      ) : (
+                        <>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setViewingPoll(poll)}
+                            className="h-7 w-7 text-muted-foreground hover:text-primary"
+                            title="View results"
+                          >
+                            <BarChart2 className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            onClick={() => setConfirmDeleteId(poll.id!)}
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}
@@ -506,6 +470,17 @@ export function AdminPollManager({ streamId }: AdminPollManagerProps) {
           </div>
         )}
       </div>
+
+      <Dialog open={!!viewingPoll} onOpenChange={(open) => !open && setViewingPoll(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Poll Results</DialogTitle>
+          </DialogHeader>
+          {viewingPoll && (
+             <PollResults poll={viewingPoll} className="border-0 p-0" />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -61,10 +61,11 @@ export function AdminViewersList({
   return (
     <div className="flex flex-col h-full">
       {/* Search */}
-      <div className="p-4 border-b border-border">
-        <div className="relative">
+      <div className="px-5 h-20 flex items-center border-b border-neutral-800/50 bg-neutral-900/40">
+        <div className="relative w-full">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
           <Input
+            name="viewer-search"
             type="text"
             placeholder={`Search ${viewerCount} viewers...`}
             value={searchQuery}
@@ -72,6 +73,13 @@ export function AdminViewersList({
             className="pl-9"
           />
         </div>
+      </div>
+      
+      {/* Online Heading */}
+      <div className="px-5 h-11 flex items-center">
+        <h3 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          Online <span className="opacity-40">—</span> {viewerCount}
+        </h3>
       </div>
 
       {/* Viewers List */}
@@ -148,15 +156,21 @@ export function AdminViewersList({
       </div>
 
       {/* Ban List Section */}
-      <div className="border-t border-border">
+      <div className="border-t border-border mt-2">
         <button
           onClick={() => setShowBanList(!showBanList)}
-          className="w-full flex items-center gap-2 px-4 py-3 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          className="w-full h-11 flex items-center justify-between px-5 text-[10px] font-bold text-muted-foreground uppercase tracking-widest hover:text-foreground transition-colors group"
         >
-          {showBanList ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
-          <UserX className="w-3 h-3" />
-          <span>Banned Users</span>
-          <span className="text-muted-foreground/60 ml-1">({bannedUsers.length})</span>
+          <div className="flex items-center gap-2">
+            <span>Banned</span>
+            <span className="opacity-40">—</span>
+            <span>{bannedUsers.length}</span>
+          </div>
+          {showBanList ? (
+            <ChevronDown className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+          ) : (
+            <ChevronRight className="w-3.5 h-3.5 opacity-40 group-hover:opacity-100 transition-opacity" />
+          )}
         </button>
         
         {showBanList && bannedUsers.length > 0 && (
@@ -203,6 +217,7 @@ export function AdminViewersList({
           
           <div className="py-2">
             <Input
+              name="ban-reason"
               type="text"
               placeholder="Reason (optional)"
               value={banReason}
