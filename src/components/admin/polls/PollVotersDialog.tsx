@@ -74,6 +74,7 @@ export function PollVotersDialog({ isOpen, onClose, optionLabel, voters }: PollV
                 rowHeight={60}
                 className="scrollbar-thin h-[300px] w-full"
                 rowComponent={Row}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 rowProps={{} as any}
               />
             ) : (

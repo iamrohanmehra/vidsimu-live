@@ -48,9 +48,9 @@ export function SlashCommandDropdown({
   const filteredTemplates: FilteredTemplate[] = 
     items
       .filter(t => t.keyword && t.keyword.toLowerCase().startsWith(filterText.toLowerCase()))
-      .map(t => ({ 
+      .map((t, index) => ({ 
         original: t,
-        id: t.id || Math.random().toString(36).substr(2, 9), 
+        id: t.id || `temp-${index}`, 
         text: t.text, 
         keyword: t.keyword! 
       }));

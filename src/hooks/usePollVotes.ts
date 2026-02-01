@@ -10,12 +10,15 @@ export function usePollVotes(pollId: string | undefined, options: { id: string }
 
   useEffect(() => {
     if (!pollId || !options) {
-      setVotersByOption({});
-      setIsLoading(false);
-      return;
+      const timer = setTimeout(() => {
+        setVotersByOption({});
+        setIsLoading(false);
+      }, 0);
+      return () => clearTimeout(timer);
     }
 
-    setIsLoading(true);
+    const timer = setTimeout(() => setIsLoading(true), 0);
+
     const q = query(
       pollVotesCollection,
       where('pollId', '==', pollId)
@@ -50,7 +53,10 @@ export function usePollVotes(pollId: string | undefined, options: { id: string }
       setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      clearTimeout(timer);
+      unsubscribe();
+    };
   }, [pollId, options]);
 
   return { votersByOption, isLoading };
